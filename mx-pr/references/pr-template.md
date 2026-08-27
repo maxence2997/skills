@@ -54,7 +54,7 @@ Sections marked `<!-- optional -->` are omitted from the draft if no content is 
 - [ ] Commit messages follow the project's commit format
 - [ ] No unrelated code reformatting in this PR
 - [ ] No secrets committed
-- [ ] CHANGELOG updated
+- [ ] CHANGELOG updated (format: `references/changelog-convention.md`)
 
 ### Conditional
 

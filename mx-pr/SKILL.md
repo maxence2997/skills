@@ -128,26 +128,16 @@ candidates and let the user trim during review.
 
 ## Step 2 — Autonomous content check (mandatory)
 
-This check is **required** — never skip it. It runs every time before
-drafting the PR, so the cleaned-up commit history feeds the PR body and
-lands cleanly on the remote. mx-flow's Phase 6.5 may have already run it,
-but mx-pr can be invoked standalone, so it runs unconditionally here; after
-a prior run the typical outcome is a no-op.
-
-In brief: two autonomous passes — **Pass 1** removes net-zero churn
-(commits/hunks that cancel each other out on the branch), **Pass 2** folds
-small fixup commits into their logical parent. Each pass is guarded by a
-tree-hash invariant: if the working tree changes at all, that pass reverts
-itself. No user prompt.
-
-**Execute the full canonical procedure**: read and follow
-`${CLAUDE_SKILL_DIR}/references/content-check.md` (the `references/`
-directory sits next to this SKILL.md). If that file is missing, tell the
-user the content check is unavailable in this install and continue to
-Step 3 **without** rewriting any history — never improvise a history
-rewrite from the summary above.
-
-Use `$BASE_BRANCH` from Step 1 as the procedure's `<base-branch>`.
+This check is **required** — never skip it. mx-pr is the only place it runs
+(mx-flow hands off to mx-pr for it). Two autonomous passes, no user prompt:
+net-zero churn out, small fixups folded into their parent, each pass
+reverted by a tree-hash invariant if it moves the tree. **Execute the full
+canonical procedure** — read and follow
+`${CLAUDE_SKILL_DIR}/references/content-check.md` (next to this SKILL.md),
+passing `$BASE_BRANCH` from Step 1 as its base. If that file is missing,
+say the content check is unavailable in this install and continue to Step 3
+**without** rewriting any history — never improvise a history rewrite from
+the summary above.
 
 ---
 

@@ -12,10 +12,10 @@ Draft a pull/merge request from the feature spec and git log, review it, then pu
 ## What it does
 
 1. Reads `~/.mx/<project>/<name>/spec.md` and the git log since branch creation
-2. **Autonomous content check** (two passes, each guarded by a tree-invariant check — `HEAD^{tree}` must be identical before and after, otherwise the pass is reverted):
-   - *Pass 1 — Cancellation cleanup*: removes net-zero churn on the branch. Whole-commit inverse pairs (`++A` then `--A` later) are dropped mechanically. Partial cancellation (`++A,++B` then `--B,++C` → effectively `++A,++C`) goes through a semantic relatedness gate before any hunks are trimmed
-   - *Pass 2 — Squash-into-parent*: folds fixup/wip/typo/review-feedback noise *and* small diff-overlap touch-ups into their parent commit via autosquash
-   - Final safety net — runs unconditionally even when /mx-flow's Phase 6.5 already ran the same check; after a prior Phase 6.5 it is typically a no-op (a single-commit branch short-circuits: neither pass can apply)
+2. **Autonomous content check** (two passes, each guarded by a tree-invariant check — `HEAD^{tree}` must be identical before and after, otherwise that pass reverts itself):
+   - *Net-zero churn*: commits and hunks that cancel each other on the branch (`++A` in one commit, `--A` in a later one) come out, so they leave no trace in the PR
+   - *Fixups*: small touch-ups — `fixup!`/`wip`/`typo`/review-feedback subjects, or a small diff sitting inside exactly one earlier commit — fold into their logical parent
+   - No user prompt, and anything uncertain is skipped (history fidelity wins). A single-commit branch short-circuits: neither pass can apply. This is the only place the check runs — /mx-flow hands off to /mx-pr for it
 3. Drafts a structured PR description from the (cleaned-up) history — the body only names files that exist in the committed branch; local sources (spec.md, plan.md, anything under `~/.mx/` or `.mx/`) feed the content but are never cited
 4. Adds a CHANGELOG entry (and commits it) when the repo has a `CHANGELOG.md` — otherwise that checklist item is dropped from the body
 5. Saves draft to `.mx/<name>/tmp/pr-draft-<timestamp>.md` (timestamp prevents collisions)
@@ -54,7 +54,7 @@ Default sections and their sources:
 ## Notes
 
 - Run after verification passes — the branch does not need to be pushed yet (Step 6 pushes it)
-- The content check's full procedure lives in `references/content-check.md` — it is the single canonical copy, also invoked by mx-flow Phase 6.5
+- The content check's full procedure lives in `references/content-check.md` — the single canonical copy, and mx-pr is the only skill that runs it
 - Customize `references/pr-template.md` to add checklists, issue references, screenshots, etc.
 - CHANGELOG entry format lives in `references/changelog-convention.md` — backs the "CHANGELOG updated" checklist item
 - Draft is never deleted on failure — you can recover and retry

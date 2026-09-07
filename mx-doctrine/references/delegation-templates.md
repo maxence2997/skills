@@ -132,15 +132,15 @@ ACCEPTANCE:
 > `/mx-team-review`, which already dispatches three perspectives plus a
 > synthesizer.
 
-## 6. TDD TASK  (type: `general-purpose`; model: mid for S-complexity, strongest for M/L; ONE at a time, never parallel — mx-flow Phase 5a delegated mode)
+## 6. TDD TASK  (type: `general-purpose`; model: mid by default, strongest when the task touches concurrency, auth/security, data migration or a public API; ONE at a time, never parallel — mx-flow Phase 5a delegated mode)
 
 ```
 GOAL: Complete ONE TDD task in an existing worktree.
 TASK (verbatim from plan.md): {{What / Test / Files block}}.
 Motivation: {{the spec sentence this task traces to}}.
 CONTEXT: Work ONLY inside {{absolute worktree path}}. Test runner:
-{{runner command}}. Advisory scope hints: predicted files {{list}},
-symbols {{list}}, complexity {{S|M|L}}.
+{{runner command}}. Files this task is expected to touch (from the plan):
+{{Files line, verbatim}}.
 Read the relevant existing code before writing anything.
 HARD RULES (violating any = failed task):
 1. Iron Law — write the failing test FIRST, run the runner, and OBSERVE
@@ -156,7 +156,7 @@ HARD RULES (violating any = failed task):
 6. Comment policy — WHY-comments only, ≤3 lines, no WHAT-comments.
    Canonical: {{absolute path to mx-team-review/references/principles.md}}
    → P2.
-7. Do NOT commit, do NOT touch plan.md or scope.yaml, do NOT edit files
+7. Do NOT commit, do NOT touch plan.md, do NOT edit files
    outside this task's blast radius.
 ACCEPTANCE:
 - RED shown: paste the failing-test output (before any implementation).

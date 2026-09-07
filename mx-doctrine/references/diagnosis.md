@@ -231,6 +231,17 @@ the old name before finishing.
   resolution yielding an empty range; `git rebase --abort && git reset`
   short-circuit in content-check Pass 2; an unguarded `*.patch` glob) —
   fenced bash blocks are now syntax-checked by the re-audit script.
+- (2026-09-07) Restructure for progressive disclosure: mx-flow/SKILL.md
+  became a thin router (guards, gates, phase skeleton) with per-phase
+  references (plan.md, worktree.md, tdd.md, verify.md, status.md,
+  finish.md); Phase 3 scope analysis folded into Phase 2 as plan checks and
+  scope.yaml removed; Phase 6.5 removed — the content check runs only in
+  mx-pr, whose procedure was cut to goal + tree-invariant + rollback;
+  mx-status folded into `/mx-flow status`; mx-brainstorm writes an ADR only
+  when a real choice was made. Rationale: whole phases are executed once,
+  so loading them on entry costs one Read and saves ~600 always-loaded
+  lines; guards and gates stay in SKILL.md per Focus 2. Line counts:
+  `maintenance.md` §6.
 
 ## Honest limits of this diagnosis
 
@@ -260,12 +271,9 @@ wc -l */SKILL.md | sort -rn | head
 # 3. Dead pointers (any hit = fix now)
 grep -rn "mx-verify\|mx-tdd\|/team-review " */SKILL.md */README.md README.md
 
-# 4. Duplicated normative blocks (spot-check the known-risky pair):
-#    mx-flow §6.5 must stay a short router. More than ~25 lines, or any
-#    "Pass 1"/"Pass 2" procedure text inline, means the duplication is
-#    back — re-extract per Leak 3.
-awk '/^### 6.5/{f=1} f{print; c++} f&&/^### [^6]|^## /{if(c>1)exit}' mx-flow/SKILL.md | wc -l
-grep -n 'inverse pairs\|autosquash' mx-flow/SKILL.md   # any hit besides a pointer = duplication returned
+# 4. The content check lives only in mx-pr. Any hit outside mx-pr besides
+#    a hand-off note means it came back:
+grep -rn "content-check\|autosquash\|tree-invariant" */SKILL.md */references/*.md | grep -v '^mx-pr/\|^mx-doctrine/'
 
 # 5. Pause inventory. Every hit must be one of: a row in a gate table, an
 #    evidence-gated pause, or a justified irreversible/outward-facing stop.

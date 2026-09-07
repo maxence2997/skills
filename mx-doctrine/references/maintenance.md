@@ -99,11 +99,12 @@ don't write it.
 
 Triggers: any `description:` > 50 words; any SKILL.md > ~450 lines
 (investigate via the extraction rule in `diagnosis.md` Leak 3 — core-path
-content may justifiably keep a file larger; mx-flow sits near ~920 lines
-by design: ~65% always-executed procedure, ~12% branch-only in six blocks
-none of which reaches the 40-line extraction threshold (re-measured
-2026-09-06)); any file in this directory > ~300 lines; the same concept
-stated in 2+ places.
+content may justifiably keep a file larger; mx-flow/SKILL.md is a thin
+router (target ≤ ~320 lines; guards, gates and the phase skeleton) with
+per-phase references read on entry; investigate if it grows past ~350
+lines or a reference file passes ~300 (measured 2026-09-07: router 320
+lines, largest reference 197)); any file
+in this directory > ~300 lines; the same concept stated in 2+ places.
 
 How: rely on git history as the archive; merge duplicate lessons into the
 strongest phrasing; NEVER silently drop a rule — deletions go through §4.

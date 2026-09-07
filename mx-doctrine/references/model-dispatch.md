@@ -79,13 +79,14 @@ user — protect it.
 - The core edit the whole task is about — the judgment IS the work.
 - Anything where writing the delegation prompt costs more than doing it.
 - Reading back subagent reports; talking to the user.
-- (2026-07-15, from mx-flow Phase 3 scope analysis running slower via
-  sub-agent): analysis whose inputs are already in your context — a
+- (2026-07-15, from mx-flow's plan-check analysis — then a separate Phase 3 —
+  running slower via sub-agent): analysis whose inputs are already in your context — a
   sub-agent must rebuild the spec/plan/repo picture from disk, and the
   round-trips cost more wall-clock than the inference. Delegate analysis
   only when it saves parent context or buys real parallelism.
   ✅ scope the plan you just wrote, inline / ❌ spawn Explore to re-read
   the spec+plan you wrote one phase earlier
+  (2026-09-07: Phase 3 folded into Phase 2; scope.yaml no longer exists)
 - (2026-07-15, from removing mx-flow's 5a-parallel batch execution):
   parallel sub-agents overlap model time only — machine costs multiply
   instead (per-worktree setup, full test suites contending for the same
@@ -135,8 +136,8 @@ the main-loop model — do that only deliberately, not as a shortcut.
 
 | Dispatch site | Type / tier |
 |---|---|
-| mx-flow Phase 3 scope analysis | inline in the parent (2026-07-15, see §2 do-inline list); `Explore` mid only as the context-loss escape hatch |
-| mx-flow Phase 5a TDD execution | user's choice at GATE 1 — inline, or one serial `general-purpose` executor per task (mid for S, strongest for M/L/unknown); recommend delegation when the main loop is above the strongest dispatchable tier; escalation per §6 with the parent as the tier above strongest — the §6 absolute cap always wins |
+| mx-flow Phase 2 plan checks | inline in the parent (the former Phase 3 scope analysis, folded into planning) (2026-07-15, see §2 do-inline list); `Explore` mid only as the context-loss escape hatch |
+| mx-flow Phase 5a TDD execution | user's choice at GATE 1 — inline, or one serial `general-purpose` executor per task (mid by default, strongest when the task touches concurrency, auth/security, data migration or a public API); recommend delegation when the main loop is above the strongest dispatchable tier; escalation per §6 with the parent as the tier above strongest — the §6 absolute cap always wins |
 | mx-team-review reviewers ×3 | mid |
 | mx-team-review tech-lead synthesizer | mid; strongest when the diff touches concurrency, auth/security, data migration, or public API |
 | Read-back verification (any skill) | mid, fresh context |

@@ -60,7 +60,7 @@ Each body item must be self-contained — readable on its own without scanning t
 1.It now retries on failure
 
 // ✅ Change first, then scenario + reason
-1.Dedupe Stripe webhook by event_id → retry storm caused double-charge
+1.Dedupe webhook by event_id → retry double-charge
 ```
 
 ---
@@ -68,31 +68,31 @@ Each body item must be self-contained — readable on its own without scanning t
 ## Examples
 
 ```
-fix: correct base date to use US trading day minus 5
+fix: use US trading day minus 5 as base date
 
-1.Use US trading day minus 5 as base date → original used current day, off-by-5
-2.Add helper computeAdjustedBaseDate → reused by report + alert paths
-3.Add test cases for adjusted base date → guard against regression
+1.Base date = trading day-5 → was current day
+2.Add computeAdjustedBaseDate → shared by 2 paths
+3.Test adjusted base date → guard regression
 ```
 
 ```
-feat: add WebSocket reconnect with exponential backoff
+feat: add ws reconnect with exponential backoff
 
-1.Add reconnectLoop in ws client → clients need auto-recovery on drop
-2.Add backoff with jitter + max delay → avoid thundering herd on outage
-3.Add integration test for reconnect + delivery → cover lossless redelivery
+1.Add reconnectLoop → clients auto-recover on drop
+2.Jittered backoff, max delay → no thundering herd
+3.Reconnect integration test → lossless redelivery
 ```
 
 ```
-refactor: extract GCP livestream logic into provider layer
+refactor: extract livestream provider layer
 
-1.Move GCP API calls into provider → service layer called GCP APIs directly
-2.Split provider into fine-grained methods → enable independent unit tests
+1.Move cloud calls to provider → service had them
+2.Split provider into small methods → testable
 ```
 
 ```
 chore: upgrade gorilla/websocket to v1.5.3
 
-1.Upgrade gorilla/websocket to v1.5.3 → prior version had known CVE
-2.Verify existing tests pass on v1.5.3 → confirm no behavioral regression
+1.Bump gorilla/websocket v1.5.3 → fixes known CVE
+2.Run existing tests on v1.5.3 → no regression
 ```

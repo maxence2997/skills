@@ -1,11 +1,10 @@
 ---
 name: mx-commit
 description: >
-  Commit all pending changes following the project's commit message convention.
-  Inspects staged and unstaged changes, groups them by logical concern,
-  stages and commits each group separately. Enforces: one logical change per
-  commit, type prefix, 50-char subject limit, numbered body items in
-  "reason → change" format, English only.
+  Commit all pending changes as one commit per logical concern, following the
+  project's message convention (type prefix, 50-char subject, English). Use when
+  the working tree may hold several changes or the convention must be enforced;
+  a single trivial change can use plain git commit.
   Usage: /mx-commit [--auto]
 author: Maxence Yang
 github: https://github.com/maxence2997/mx-harness
@@ -28,6 +27,14 @@ allowed-tools:
 ```
 
 Use `--auto` when invoked from an orchestrating skill (e.g. mx-flow). Use the default when invoked directly by the user.
+
+---
+
+## Hard Rules (never violate)
+
+- Never use `--no-verify` or `--no-gpg-sign` unless the user explicitly requests it.
+- Never amend a commit that has already been pushed.
+- Never commit files that likely contain secrets (`.env`, credentials, private keys).
 
 ---
 
@@ -54,6 +61,8 @@ If there are no changes at all (nothing staged, nothing modified), tell the user
 
 Analyse all pending changes (staged and unstaged together) and group them into one or more **logical units**. A logical unit is a set of files that together represent exactly one coherent change with a single `type`.
 
+If all pending changes are one coherent change (single concern, one type), say so in one line and go straight to Step 4 with a single unit — no grouping analysis. Subject only, no body, when the change is trivial (typo, bump, comment); the 50-char subject limit and the type prefix still apply.
+
 Rules:
 - A logical unit maps to exactly one commit type (`feat`, `fix`, `refactor`, `doc`, `test`, `chore`, …)
 - Files that belong to the same behaviour change belong in the same unit
@@ -69,7 +78,7 @@ If changes span multiple logical units, plan the commit order (dependencies firs
 For each logical unit, draft a commit message following the format in `references/commit-message.md`:
 
 1. Subject line: `<type>: <subject>` — must be ≤ 50 characters.
-2. Optional body: up to 3 items in `reason → change` format, each ≤ 50 characters.
+2. Optional body: follow that file's body rules — max 3 items, each ≤ 50 characters.
 
 If `--auto` was **not** passed, present all drafts to the user grouped by unit before committing any of them. Wait for approval.
 
@@ -89,10 +98,15 @@ git add <file1> <file2> ...
 git commit -m "$(cat <<'EOF'
 <type>: <subject>
 
-1.<reason> → <change>
+1.<change> → <scenario + reason>
 EOF
 )"
 ```
+
+If `git commit` exits non-zero (hook rejection, empty commit, signing failure), stop the
+run — that unit is not committed. Report the hook output verbatim, list which units were
+committed and which were not yet attempted, and leave the working tree as it is.
+Never retry with `--no-verify` (see Hard Rules above).
 
 If `--auto` was passed, proceed through all units without pausing.
 
@@ -100,7 +114,13 @@ If `--auto` was passed, proceed through all units without pausing.
 
 ## Step 6 — Verify
 
-Do not run additional bash commands. Using information already known from Step 5, output a formatted summary directly:
+Run exactly one command and render the summary from its output — nothing else:
+
+```bash
+git log -3 --oneline --stat
+```
+
+(use `-<n+2>` when this run made n > 1 commits, so the two preceding commits are still in range).
 
 For each commit just made, show the full block:
 ```
@@ -117,10 +137,4 @@ Then show the two commits before those, hash and subject only:
 
 If multiple commits were made in this run, all of them get the full block. The two trailing entries are always the ones immediately preceding this run.
 
----
-
-## Hard Rules (never violate)
-
-- Never use `--no-verify` or `--no-gpg-sign` unless the user explicitly requests it.
-- Never amend a commit that has already been pushed.
-- Never commit files that likely contain secrets (`.env`, credentials, private keys).
+Never print `✔` for a unit whose `git commit` exited non-zero — no commit exists for it. Report that unit as failed with the hook output, as required in Step 5.

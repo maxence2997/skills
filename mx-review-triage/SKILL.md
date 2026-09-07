@@ -38,6 +38,9 @@ mx-flow GATE 3), skip that pause**: show the full triage table, treat all
 "Skip" buckets behave as written. When invoked directly by the user, the
 pause applies as written.
 
+**Hard gate**: with `--source pr`, this skill does not finish until zero
+unresponded comments remain (Step 7).
+
 ---
 
 ## Step 1 — Determine source
@@ -46,7 +49,9 @@ pause applies as written.
 Find the most recent review report:
 1. Resolve repo root: `REPO_ROOT=$(git rev-parse --show-toplevel)`. If
    running inside a linked worktree, also resolve the main repository root
-   (`.mx/` lives there): `MAIN_ROOT=$(dirname "$(git rev-parse --git-common-dir)")`
+   (`.mx/` lives there):
+   `MAIN_ROOT=$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)`
+   (in a normal checkout MAIN_ROOT resolves to the same directory as REPO_ROOT)
 2. Check `.mx/*/tmp/review-*.md` under `$REPO_ROOT` and `$MAIN_ROOT`
    (project-local active feature path)
 3. Fall back to `/tmp/review-reports/` (Unix) or `%TEMP%\review-reports\` (Windows)
@@ -63,6 +68,12 @@ Filter out:
 - Comments already replied to by the PR author
 - Bot-generated summary comments (e.g. Copilot review overview)
 - Individual line comments from bots MUST still be evaluated
+
+If the platform CLI is absent or its call fails for any reason (not installed, not
+authenticated, network, 4xx/5xx), stop and report the exact error — never treat a
+failed fetch as "no comments"; Step 7's gate cannot pass on an unread PR.
+If the remote is neither GitHub nor GitLab, say so and ask the user for the comment
+source.
 
 If zero unresponded comments remain, report "No unresponded comments." and stop.
 
@@ -83,7 +94,8 @@ Auto-detect in this order:
 For each finding, extract:
 - **Location**: file and line (or `—` if not applicable)
 - **Category**: bug, correctness, design, security, performance, style/nitpick, question, suggestion
-- **Severity**: classify using `references/SEVERITY.md`
+- **Severity**: classify using `references/SEVERITY.md`, including its mapping from
+  the report's 🔴 / 🟡 / 🔵 severities
 
 ---
 
@@ -111,26 +123,34 @@ Read the referenced code and assess every finding on three dimensions:
 
 ## Step 5 — Present report
 
-Show the full triage table, sorted by bucket then severity:
+With 1–2 findings, skip the table: state each finding, its bucket and severity in a
+sentence, then proceed under the Step 5 approval rule for the active source.
 
-```
-| # | Bucket   | Sev | Location        | Finding (summary)             | Cost | Recommended action        |
-|---|----------|-----|-----------------|-------------------------------|------|---------------------------|
-| 1 | Fix now  | P0  | client.go:42    | nil check missing             | Low  | Add nil guard             |
-| 2 | Fix now  | P1  | handler.go:118  | error swallowed silently      | Low  | Propagate error           |
-| 3 | Track    | P1  | options.go:88   | timeout should be configurable| Med  | Track in TODOS.md         |
-| 4 | Skip     | P3  | client.go:15    | rename variable               | Low  | Won't fix: name idiomatic |
-```
+Otherwise show the full triage table, sorted by bucket then severity, with these
+eight columns:
+`# | Bucket | Sev | File:Line | Comment (summary) | Cost | Risk | Recommended action`
+(a rendered sample is in `references/EXAMPLES.md`).
 
 Briefly explain any non-obvious triage decisions after the table.
 
-**Do not make any code changes yet.** Wait for user approval.
+Then, by source:
+- `--source pr`: **do not post any reply or make changes yet** — wait for user
+  approval (replies are public and not retractable).
+  (Orchestrated mode: treat "Fix now" as approved and continue — see above.)
+- `--source review`: execute the "Fix now" bucket immediately after showing the
+  table; pause only for items whose fix touches files outside the reviewed diff or
+  exceeds the cost class you assigned.
 
 ---
 
 ## Step 6 — Execute approved decisions
 
-After user reviews and approves (adjusting bucket assignments as needed):
+Once the decisions for the active source are settled (bucket assignments adjusted as
+needed):
+
+Before writing replies, read `references/EXAMPLES.md` (located in the same directory
+as this SKILL.md) for the reply templates and a worked triage table; if the file is
+missing, use the bare formats below.
 
 **Fix now** — make the code change, then:
 - `--source review`: commit with `/mx-commit` (pass `--auto` when running
@@ -138,7 +158,9 @@ After user reviews and approves (adjusting bucket assignments as needed):
 - `--source pr`: commit then reply on the PR/MR:
   `Fixed in {hash}. {what changed and why}`
 
-**Track** — add entry to repo root `TODOS.md` with context, then:
+**Track** — append the entry to `<repo root>/TODOS.md`, creating the file with a
+`# TODOS` heading if it does not exist. Entry format:
+`- [ ] <sev> <file:line> — <finding> (from review <date>)`
 - `--source pr`: reply `Tracked in TODOS.md — {reason}`
 
 **Skip (won't fix)**:

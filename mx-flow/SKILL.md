@@ -659,7 +659,9 @@ Test quality rules:
   details
 - A good test reads like a specification: "user can do X given Y"
 - Tests must not depend on **wall-clock / real time** — inject the clock,
-  synchronize on signals, never `sleep`. Canonical:
+  synchronize on signals, never `sleep` and never a per-test timer such as
+  `time.After`; the command-line timeout (`go test -timeout`) is the only
+  backstop. Canonical:
   `${CLAUDE_SKILL_DIR}/../mx-team-review/references/principles.md` →
   *P1 — Component Test* → *Deterministic Time*
 - The test must **fail** before any production code is written
@@ -720,12 +722,13 @@ Rules:
 - Refactor is optional; skip if the code is already clean
 
 **Exit condition checklist** — Before marking the task done, verify all
-six conditions:
+seven conditions:
 
 ```
 □ RED observed: test failure was seen with actual output (not assumed)
 □ GREEN confirmed: test passes after implementation
 □ Full suite clean: no new failures introduced by this change
+□ Deterministic test: the new test touches no real clock (no sleep, timer, timeout or polling) and no machine state; fixed instants / fake clock only
 □ Comment policy: no WHAT-comments, no vague pronouns, magic numbers/workarounds explain WHY, every comment ≤3 lines
 □ Plan updated: task marked [x] in .mx/<name>/plan.md
 □ Committed: /mx-commit --auto completed for this task

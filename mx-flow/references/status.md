@@ -1,55 +1,24 @@
----
-name: mx-status
-description: >
-  Show which mx-flow stage each feature in this project is at, its task progress,
-  and the next command to run. Detects broken states and gives recovery
-  instructions. Use when you lose track of where you are in an mx-flow feature —
-  not a replacement for git status.
-  Usage: /mx-status [name]
-author: Maxence Yang
-github: https://github.com/maxence2997/mx-harness
-source: https://github.com/maxence2997/mx-harness/tree/main/mx-status
-user-invocable: true
-allowed-tools:
-  - Bash
-  - Read
-  - Glob
----
+# `/mx-flow status [name]` (mx-flow)
 
-# mx-status
-
-## Trigger
-
-```
-/mx-status              ← show all features in current project
-/mx-status <name>       ← show one specific feature
-```
-
----
+> Read on entering the status subcommand. It reports where every feature in
+> this project stands and what to run next. It does not modify any file and
+> never enters the pipeline.
 
 ## Path resolution
 
-Resolve two base directories before any file operation:
-
-```bash
-REPO_ROOT=$(git rev-parse --show-toplevel)
-PROJECT=$(basename "$REPO_ROOT")
-```
+The status subcommand works one level above the phases, because it lists
+every feature: SKILL.md's `GLOBAL_MX` and `LOCAL_MX` are the `<name>/`
+subdirectories of the two directories below. Resolve `REPO_ROOT` and
+`PROJECT` exactly as SKILL.md's path resolution section does.
 
 | Variable | Path | Contains |
 |----------|------|----------|
 | `MX_PROJECT_DIR` | `~/.mx/<project>/` | `<name>/spec.md`, `<name>/adr.md`, `ai-learning.md` |
-| `MX_LOCAL_DIR` | `<repo-root>/.mx/` | `<name>/plan.md`, `<name>/scope.yaml`, `<name>/worktree/`, `<name>/tmp/` |
-
-mx-status works one level above the other skills, because it lists every feature:
-the suite's `GLOBAL_MX` and `LOCAL_MX` are the `<name>/` subdirectories of
-`MX_PROJECT_DIR` and `MX_LOCAL_DIR`.
+| `MX_LOCAL_DIR` | `<repo-root>/.mx/` | `<name>/plan.md`, `<name>/worktree/`, `<name>/tmp/` |
 
 On Windows: `MX_PROJECT_DIR` = `%USERPROFILE%\.mx\<project>\`
 
 If the current directory is not inside a git repo, show all projects under `~/.mx/` and ask the user which one to inspect.
-
----
 
 ## Step 1 — Collect features
 
@@ -70,15 +39,12 @@ For each feature, collect:
 | `spec.md` | `~/.mx/<project>/<name>/spec.md` (GLOBAL) | Brainstorm complete |
 | `adr.md` | `~/.mx/<project>/<name>/adr.md` (GLOBAL) | Architecture decision recorded |
 | `plan.md` | `.mx/<name>/plan.md` (LOCAL) | Plan written |
-| `scope.yaml` | `.mx/<name>/scope.yaml` (LOCAL) | Scope analysis complete |
 | `worktree/` directory | `.mx/<name>/worktree/` (LOCAL) | Worktree created |
 | Task lines `[x]` / `[ ]` in `plan.md` | `.mx/<name>/plan.md` (LOCAL) | TDD progress |
 | `tmp/review-*.md` | `.mx/<name>/tmp/review-*.md` (LOCAL) | Review report exists |
 | PR URL in `plan.md` | `.mx/<name>/plan.md` (LOCAL) | PR created |
 
 If `<name>` is given, collect only that feature.
-
----
 
 ## Step 2 — Classify each feature into a stage
 
@@ -91,8 +57,7 @@ is the fallthrough:
 | **5 — Triage** | `tmp/review-*.md` exists, no PR URL in `plan.md` | `awaiting triage / verify` |
 | **4 — Review** | `plan.md` exists and all its tasks are `[x]`, no `tmp/review-*.md` | `awaiting review` |
 | **3 — TDD** | `worktree/` exists AND at least one `[ ]` task | `in progress` |
-| **2b — Scoped** | `scope.yaml` exists, no `worktree/` dir | `awaiting worktree` |
-| **2 — Plan** | `plan.md` exists, no `scope.yaml` | `awaiting scope analysis` |
+| **2 — Plan** | `plan.md` exists, no `worktree/` dir | `awaiting worktree` |
 | **Done (archived)** | `spec.md` exists, no `plan.md`, no `worktree/`, feature branch merged | `done (archived)` |
 | **1 — Spec** | `spec.md` exists, no `plan.md` | `awaiting plan` |
 | **0 — Nothing** | No `spec.md` AND no `plan.md` AND no `worktree/` | `not started` |
@@ -105,8 +70,6 @@ Stage 2 and flag it as a broken state:
 ```
 
 An "active" feature is any feature at Stage 1–5 (not yet at PR stage).
-
----
 
 ## Step 3 — Detect broken states
 
@@ -133,11 +96,9 @@ Before showing normal status, check for these anomalies:
 **Multiple active features** — more than one feature at Stage 1–5:
 ```
 [!] Multiple features in progress. Specify which one to continue:
-    /mx-status <name>
+    /mx-flow status <name>
 ```
 List them all so the user can choose.
-
----
 
 ## Step 4 — Determine next action
 
@@ -151,16 +112,13 @@ that started them.
 |---|---|
 | 0 | `/mx-brainstorm <topic>` or `/mx-flow <topic>` |
 | 1 | Run `/mx-flow <topic>` — it will re-run brainstorm; or plan manually |
-| 2 | Resume the mx-flow session that wrote the plan (it continues with scope analysis), or write `.mx/<name>/scope.yaml` yourself |
-| 2b | Resume the mx-flow session, or create the worktree yourself and work there |
+| 2 | Resume the mx-flow session that wrote the plan (it continues with the worktree), or create the worktree yourself and work there |
 | 3 | Continue the TDD loop — next task: first `[ ]` task in `plan.md`. Resume in the existing session, or run that task directly |
 | 4 | `/mx-team-review` |
 | 5 — review exists, no triage | `/mx-review-triage --source review` |
 | 5 — triage done, no PR | `/mx-pr` |
 | 6 | `/mx-flow finish <name>` (after merge) |
 | Done (archived) | Nothing — the feature is finished; its spec/ADR stay in `~/.mx/<project>/<name>/` |
-
----
 
 ## Step 5 — Output
 
@@ -169,7 +127,7 @@ Print the status block. Keep it dense and scannable — no prose.
 ### Single feature focus
 
 ```
-mx-status
+mx-flow status
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Project  : <project>
 Feature  : <name>
@@ -188,7 +146,7 @@ Next     : <command>
 ### All features in project
 
 ```
-mx-status — <project>
+mx-flow status — <project>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ● <name>   [ACTIVE] Stage 3 — TDD  4/7 tasks
   ✓ <name>   PR created — /mx-flow finish to clean up
@@ -205,8 +163,6 @@ Symbols:
 
 If there are broken state warnings (Steps 2–3), show them above the status block with `[!]` prefix.
 
----
-
 ## Step 6 — Close out
 
 If a broken state was detected, end with one line:
@@ -216,3 +172,4 @@ Recovery options are listed above — say which one to apply.
 ```
 
 Do not block on a yes/no question. If no broken states, just show the status and stop.
+The status subcommand modifies no file — it is read-only.

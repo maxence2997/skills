@@ -35,14 +35,14 @@ If (a) is unavailable (no `gh`/`glab`, no auth, no remote) but (b) holds,
 that is sufficient. Only if neither (a) nor (b) can be established: ask
 the user to confirm the merge.
 
-## 8.2 — Delete the plan and scope files
+## 8.2 — Delete the plan
 
 ```bash
-rm -f .mx/<name>/plan.md .mx/<name>/scope.yaml
+rm -f .mx/<name>/plan.md
 ```
 
-Both files describe in-flight work — they have no value after all tasks
-are done. Report: `Deleted .mx/<name>/plan.md and scope.yaml`
+The plan describes in-flight work — it has no value after all tasks
+are done. Report: `Deleted .mx/<name>/plan.md`
 
 ## 8.3 — Preserve design spec and ADRs
 
@@ -50,7 +50,7 @@ Do **not** delete `~/.mx/<project>/<name>/spec.md` or
 `~/.mx/<project>/<name>/adr.md`. The design spec records what was built,
 the ADRs record why — both have lasting documentation value.
 
-Report: `Kept ~/.mx/<project>/<name>/spec.md and adr.md (preserved)`
+Report: `Kept ~/.mx/<project>/<name>/spec.md (and adr.md when present)`
 
 ## 8.4 — Clean up temp files
 
@@ -124,7 +124,7 @@ rmdir .mx/<name>/ 2>/dev/null
 
 ```
 Finished <name>:
-  ✓ Plan and scope deleted (.mx/<name>/plan.md, scope.yaml)
+  ✓ Plan deleted (.mx/<name>/plan.md)
   ✓ Design spec and ADRs preserved at ~/.mx/<project>/<name>/
   ✓ Temp directory deleted (.mx/<name>/tmp/)
   ✓ Worktree removed

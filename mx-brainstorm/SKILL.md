@@ -1,10 +1,11 @@
 ---
 name: mx-brainstorm
 description: >
-  Turn a rough idea into an approved design spec before any code is written:
-  clarifying questions in one batch, 2-3 distinct approaches with trade-offs,
-  spec and ADR written to ~/.mx/<project>/<name>/. Hard gate: no implementation until
-  the user approves the spec. Use at the start of any feature or non-trivial fix.
+  Turn a rough idea into an approved design spec: clarifying questions in one
+  batch, 2-3 distinct approaches with trade-offs, spec (and ADR when a real
+  choice was made) written to ~/.mx/<project>/<name>/. Hard gate: no
+  implementation until the user approves the spec. Use when starting any
+  feature or non-trivial fix.
 author: Maxence Yang
 github: https://github.com/maxence2997/mx-harness
 source: https://github.com/maxence2997/mx-harness/tree/main/mx-brainstorm
@@ -180,25 +181,30 @@ says so in words that name approval ("approved", "ok", "go", "ship it",
 A partial objection means: apply it, re-display, ask again.
 
 If the user edits `spec.md` after approving, re-read it before Step 5 and,
-if the chosen approach changed, re-run Step 5's ADR against the new
-content.
+if the chosen approach changed, re-run Step 5 against the new content.
 
 ---
 
-## Step 5 — Record ADR
+## Step 5 — Record ADR (only when there was a real choice)
 
-After the gate passes, write the ADR.
+After the gate passes, decide whether an ADR is warranted:
 
-Read `references/adr-format.md` (located in the same directory as this
-SKILL.md) and follow it.
-
-Report: `ADR saved to ~/.mx/<project>/<name>/adr.md`
+- **Write `adr.md`** when the brainstorm weighed **two or more viable
+  approaches** and the chosen one was not the obvious default. Write it
+  without asking — read `references/adr-format.md` (located in the same
+  directory as this SKILL.md) and follow it.
+  Report: `ADR saved to ~/.mx/<project>/<name>/adr.md`
+- **No ADR otherwise** — one approach was obvious, or the alternatives were
+  never viable. Record the decision and the alternatives you considered in
+  `spec.md`'s How section instead, and report
+  `no ADR — single obvious approach`.
 
 ---
 
 ## Step 6 — Hand off
 
-Once the design spec and ADR are saved, announce:
+Once the spec — and the ADR, if Step 5 wrote one — is saved, announce the
+following. Drop the ADR line entirely when Step 5 wrote no ADR:
 
 ```
 Design spec saved to ~/.mx/<project>/<name>/spec.md

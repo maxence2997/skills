@@ -2,7 +2,7 @@
 
 Turn a rough idea into an approved design spec before any code is written.
 
-Asks all its clarifying questions in one batch — each with a proposed default — proposes 2-3 approaches with trade-offs, and saves the agreed design spec to `~/.mx/<project>/<name>/spec.md`. Automatically records an ADR capturing the options and rationale. Nothing gets built until the design spec is approved.
+Asks all its clarifying questions in one batch — each with a proposed default — proposes 2-3 approaches with trade-offs, and saves the agreed design spec to `~/.mx/<project>/<name>/spec.md`. Records an ADR with the options and rationale when there was a real choice to record; otherwise the decision stays in the spec. Nothing gets built until the design spec is approved.
 
 ## Usage
 
@@ -20,14 +20,14 @@ Asks all its clarifying questions in one batch — each with a proposed default 
 - **How** — the chosen approach and design decisions
 - **Out of scope** — what this change explicitly does not cover
 
-`~/.mx/<project>/<name>/adr.md` — the decision rationale and rejected alternatives (written automatically, no extra questions asked).
+`~/.mx/<project>/<name>/adr.md` — the decision rationale and rejected alternatives. Written without asking, but only when the brainstorm weighed two or more viable approaches and the chosen one was not the obvious default; a single-obvious-approach brainstorm records the decision in the spec's How section and says so.
 
-Both files have lasting value after implementation is done.
+Whichever files are written have lasting value after implementation is done.
 
 ## Notes
 
 - Clarifying questions arrive as one numbered batch (max 6); answer any subset — unanswered items take the stated default
 - Bows out when the change is too small for a spec to add anything beyond the diff
 - Hard gate: no code is written until the user approves the design spec — approval means saying so, in words; silence or a comment on the content is not approval
-- Creates `~/.mx/<project>/<name>/` for permanent spec and ADR storage
+- Creates `~/.mx/<project>/<name>/` for permanent spec storage (and the ADR, when one is written)
 - Hand-off: after approval, use `/mx-flow` to continue the workflow

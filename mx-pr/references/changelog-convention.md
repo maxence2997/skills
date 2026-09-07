@@ -22,7 +22,9 @@ Convention for the target repo's `CHANGELOG.md`. Backs the
 ## Categories
 
 Category names follow Keep a Changelog. Commit types are defined in
-`mx-commit/references/commit-message.md`; map them as:
+`${CLAUDE_SKILL_DIR}/../mx-commit/references/commit-message.md` — if that
+file is missing (partial install), say so once and use the type list below
+as written. Map them as:
 
 | Category | From commit type | Note |
 |---|---|---|

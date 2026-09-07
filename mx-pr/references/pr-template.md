@@ -16,7 +16,7 @@ The skill reads this file and fills each section using collected context.
 | `{{test_plan}}` | Completed tasks from plan.md |
 | `{{notes}}` | Design spec — Out of scope / trade-offs (omitted if empty) |
 | `{{checklist_conditional}}` | Skill selects relevant items based on commit types in the git log |
-| `{{issues}}` | Related issues found via branch name, commit messages, or open issue list — omitted if none found |
+| `{{issues}}` | Related issues found via branch name, commit messages, or open issue list — `Closes #N` if this PR resolves the issue, `Relates to #N` if partial; omitted if none found |
 
 Sections marked `<!-- optional -->` are omitted from the draft if no content is available.
 
@@ -54,7 +54,7 @@ Sections marked `<!-- optional -->` are omitted from the draft if no content is 
 - [ ] Commit messages follow the project's commit format
 - [ ] No unrelated code reformatting in this PR
 - [ ] No secrets committed
-- [ ] CHANGELOG updated (format: `references/changelog-convention.md`)
+- [ ] CHANGELOG updated
 
 ### Conditional
 
@@ -110,6 +110,7 @@ If none apply, the Conditional section is omitted entirely.
 
 ## Rules
 
+- The CHANGELOG entry itself follows `changelog-convention.md` in this directory. That path is skill-local: it must never appear in the published body — the checklist line stays plain, and so does anything else you add here
 - The title is derived from the first bullet of `{{summary}}` — keep it under 72 characters
 - If the design spec does not exist, `{{summary}}`, `{{motivation}}`, and `{{notes}}` are derived from the git log only
 - Empty optional sections are removed from the final draft

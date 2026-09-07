@@ -27,9 +27,16 @@ BASE=$(git merge-base HEAD <base-branch>)
 ```
 
 `<base-branch>` is the branch this work will merge into: `develop` if it
-exists (local or remote), otherwise `main`, unless the invoking skill
-already resolved one — then use that. If neither `develop` nor `main`
+exists, otherwise `main`, unless the invoking skill already resolved one —
+then use that. Use the ref that actually exists: the local branch, or
+`origin/<name>` when only the remote-tracking ref is there — the bare name
+of a remote-only branch makes `merge-base` fail and leaves `BASE` empty, so
+both passes would silently analyse nothing. If neither `develop` nor `main`
 exists, ask the user which branch to use — do not guess.
+
+Short-circuit: if `git rev-list --count $BASE..HEAD` is 1, neither pass can
+apply (Pass 1 needs a pair, Pass 2 needs a parent on the branch). Log
+`Content check: 1 commit on branch, nothing to do.` and return.
 
 ## Pass 1 — Cancellation cleanup
 
@@ -100,9 +107,18 @@ git format-patch "$BASE..HEAD" -o "$PATCHDIR"
 # Drop fully-cancelled commits: rm "$PATCHDIR"/<seq>-*.patch
 # For partial cancellation: edit the patch file to delete the cancelling hunks (keep the header)
 git reset --hard "$BASE"
-git am "$PATCHDIR"/*.patch    # empty patches are skipped automatically
+if ls "$PATCHDIR"/*.patch >/dev/null 2>&1; then
+  git am "$PATCHDIR"/*.patch  # empty patches are skipped automatically
+else
+  git reset --hard "$PRE_HEAD"   # every patch was dropped — see below
+fi
 rm -rf "$PATCHDIR"
 ```
+
+If every patch was dropped, the branch would be empty relative to base:
+the `reset --hard "$BASE"` has already happened, so return to `$PRE_HEAD`,
+log `Pass 1 aborted (would empty the branch)`, skip the tree-invariant
+verification below, and continue to Pass 2 from `$PRE_HEAD`.
 
 ### Verify Pass 1 tree invariant
 
@@ -170,8 +186,13 @@ GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash $BASE
 ```
 
 Verify the tree invariant the same way as Pass 1. On any failure:
-`git rebase --abort 2>/dev/null && git reset --hard "$PRE_HEAD"`, log
-`Pass 2 aborted (tree/rebase mismatch), squashes kept as-is`, proceed.
+
+```bash
+git rebase --abort 2>/dev/null || true
+git reset --hard "$PRE_HEAD"
+```
+
+Log `Pass 2 aborted (tree/rebase mismatch), squashes kept as-is`, proceed.
 
 ## Report
 

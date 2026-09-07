@@ -3,11 +3,37 @@
 > Read this when triggered by `/mx-flow finish <name>`. This phase runs
 > independently from the main pipeline.
 
-## 8.1 — Confirm the PR is merged
+## 8.1 — Establish merge evidence (no question when it can be derived)
 
-Ask the user to confirm the PR is merged before proceeding.
-If running from within a worktree, remind the user to switch back to the
-main branch first — worktree removal must be run from outside the worktree.
+Worktree removal must run from outside the worktree, so move there
+yourself rather than asking:
+
+```bash
+MAIN_ROOT=$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)
+cd "$MAIN_ROOT"
+```
+
+(in a normal checkout MAIN_ROOT resolves to the same directory as
+REPO_ROOT)
+
+Then collect merge evidence, in order — stop as soon as (a) and (b) hold:
+
+- **(a) PR/MR state** — `gh pr view <branch-name> --json state -q .state`
+  → `MERGED`, or
+  `glab mr view <branch-name> --output json | jq -r .state` → `merged`
+- **(b) Content is in the base** —
+  `git fetch origin <base-branch> && git diff --quiet origin/<base-branch>..<branch-name>`.
+  An empty diff means every change on the branch is already in the base:
+  squash- and rebase-proof, and independent of commit SHAs.
+- **(c) Nothing unpushed** — `git rev-list --count @{u}..<branch-name>`
+  is 0, or the upstream is gone (the remote branch was deleted after the
+  merge — itself merge evidence)
+- **(d) Worktree clean** —
+  `git -C .mx/<name>/worktree status --porcelain` is empty
+
+If (a) is unavailable (no `gh`/`glab`, no auth, no remote) but (b) holds,
+that is sufficient. Only if neither (a) nor (b) can be established: ask
+the user to confirm the merge.
 
 ## 8.2 — Delete the plan and scope files
 
@@ -28,14 +54,19 @@ Report: `Kept ~/.mx/<project>/<name>/spec.md and adr.md (preserved)`
 
 ## 8.4 — Clean up temp files
 
-List all files in `.mx/<name>/tmp/` with timestamps:
+List what is there, then delete the whole directory and report what was
+removed:
 
 ```bash
 ls -lt .mx/<name>/tmp/ 2>/dev/null
+rm -rf .mx/<name>/tmp/
 ```
 
-Show the list to the user and ask which to delete. Delete the selected
-ones. If `.mx/<name>/tmp/` is empty after deletion, remove the directory.
+`.mx/` is gitignored and ephemeral by definition; at this point the
+directory holds review reports and PR drafts for a feature that has just
+merged. Keep a file only if the user asked for it earlier in this session
+— move that file out first, then delete the rest. Never touch anything
+outside `.mx/<name>/tmp/`.
 
 ## 8.5 — Remove the worktree
 
@@ -64,20 +95,23 @@ Do not force-remove automatically. Wait for the user to decide.
 git branch -d <branch-name>
 ```
 
-`-d` (not `-D`) is intentional — git refuses to delete an unmerged branch,
-which acts as a safety net.
+`-d` (not `-D`) first — git refuses to delete an unmerged branch, which
+acts as a safety net.
 
-**If git refuses** (branch not fully merged):
+**If git refuses** (branch not fully merged): after a squash-merge or
+rebase this is the expected outcome, not an error. With 8.1's evidence in
+hand — (a) or (b) established and (c) clean — run
+`git branch -D <branch-name>` immediately and report:
 
 ```
-Branch deletion failed — git reports the branch is not fully merged.
-
-If the PR was squash-merged or rebased, the branch may look unmerged to git.
-To force delete:
-  git branch -D <branch-name>
+Branch deleted (-D; squash-merge verified: PR #<n> MERGED, branch content identical to <base-branch>).
 ```
 
-Do not force-delete automatically. Wait for the user to confirm.
+**Still ask — never auto-force — when:**
+
+- 8.1 (b) failed: the branch carries work that is not in the base branch;
+- 8.1 (c) failed: unpushed commits would be lost;
+- the worktree is dirty — that is 8.5's guard, which stands as written.
 
 ## 8.7 — Clean up local .mx directory
 
@@ -92,7 +126,7 @@ rmdir .mx/<name>/ 2>/dev/null
 Finished <name>:
   ✓ Plan and scope deleted (.mx/<name>/plan.md, scope.yaml)
   ✓ Design spec and ADRs preserved at ~/.mx/<project>/<name>/
-  ✓ Temp files cleared (.mx/<name>/tmp/)
+  ✓ Temp directory deleted (.mx/<name>/tmp/)
   ✓ Worktree removed
   ✓ Branch deleted
 ```

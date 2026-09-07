@@ -30,6 +30,11 @@ allowed-tools:
 /mx-flow finish <name>    ← post-merge cleanup (read references/finish.md and follow it)
 ```
 
+**Not this skill** when the change is one obvious edit with no design
+choice — a rename, a constant, a one-file fix. Say so and do it directly
+(/mx-commit for the commit, /mx-pr if it needs a PR). mx-flow's cost is the
+spec and the review loop; a change that needs neither should not pay for them.
+
 ## Non-negotiables
 
 Violating any of these is a workflow failure. They bind every phase and
@@ -67,7 +72,7 @@ opportunities, not "y/n continue" prompts.
 
 | Gate | Behaviour |
 |------|-----------|
-| **GATE 1 — Spec** | **Human.** Show the draft spec; discuss and adjust until the user explicitly confirms. Do not proceed without approval. With the approval, also collect the Phase 5a execution mode (inline / delegated) — one extra question, same gate. |
+| **GATE 1 — Spec** | **Human.** Show the draft spec; discuss and adjust until the user explicitly confirms. Do not proceed without approval. With the approval, state the default execution mode (inline / delegated) for Phase 5a; the user may switch at any time. |
 | **GATE 2 — Task list** | Auto. Show the task list for visibility, then proceed immediately. |
 | **GATE 3 — Triage** | Auto. Show the triage report, auto-approve all "fix" items, execute immediately. |
 | **GATE 4 — PR** | Auto. Draft and publish the PR autonomously; show the draft for visibility. Pause only if the agent cannot determine how to proceed (no remote, ambiguous platform, missing credentials). |
@@ -80,7 +85,8 @@ their own interactive pauses. This gate table overrides those pauses at
 GATE 2/3/4. From their side: mx-team-review, mx-review-triage, and mx-pr
 each carry an "Orchestrated mode" section stating the same; mx-commit is
 orchestrated by passing `--auto` (no section needed); mx-brainstorm's only
-pause is GATE 1, which stays human.
+pause is GATE 1, which stays human. (Invocation spelling per harness:
+mx-doctrine model-dispatch §0.)
 
 ## Doctrine
 
@@ -171,8 +177,8 @@ Before anything else:
    - Related code that is likely in scope (e.g. if topic mentions a
      component, read adjacent files)
    - Any design docs, behaviour specs, or CLAUDE.md files that apply
-   - Read broadly enough that the first brainstorm question is grounded in
-     actual code
+   - Read broadly enough that the brainstorm's clarifying questions are
+     grounded in actual code
 6. Announce clearly:
 
 ```
@@ -195,23 +201,22 @@ Run /mx-brainstorm with the following context:
   immediately, do not ask if the user wants to start
 
 Follow mx-brainstorm's full procedure. It owns the spec and ADR output
-(written to GLOBAL_MX).
+(written to GLOBAL_MX). If mx-brainstorm is not installed, run GATE 1
+yourself: propose 2–3 distinct approaches, get an explicit approval, write
+spec.md to GLOBAL_MX — do not skip the gate.
 
 **GATE 1**: Present the draft spec. Do not proceed until the user
 explicitly confirms.
 
-With the spec approval, ask one more question — who executes the TDD
-tasks in Phase 5a:
-
-- **inline** — the parent does the TDD cycle itself. Fastest; costliest
-  when the main-loop model is a premium tier.
-- **delegated** — one executor sub-agent per task, strictly serial (mid
-  tier for S complexity, strongest for M/L); the parent verifies and
-  commits. Cheaper; adds dispatch round-trips.
-
-Recommend delegated when the main-loop model is above the strongest tier
-the Agent tool can dispatch, inline otherwise — but the user's choice
-wins. Record it for Phase 5a. No answer, or no Agent tool → inline.
+With the spec approval, state (do not ask) the Phase 5a execution mode —
+the default is `inline`, the parent running the TDD cycle itself (both
+modes are defined in Phase 5a). Choose `delegated` instead when there is a
+tier gap: your main-loop model sits above the strongest tier in your Agent
+tool's `model` enum (map by tier, not by name — mx-doctrine
+model-dispatch §1). No Agent tool → inline, no choice to state. Say it in
+one line and continue; the user can say "delegated" at any point and
+switch between tasks (their instruction always wins). Record the mode for
+Phase 5a.
 
 ---
 
@@ -250,7 +255,8 @@ will too. Lock scope here, not later.
   scope unless the user approves.
 
 The test for every task: it traces directly to a sentence in the spec. If
-it does not, drop it or ask the user.
+it does not, drop it and note the drop in the plan summary. Ask only if
+dropping it would leave a spec sentence unimplemented.
 
 ### 2.1 — Read the design spec
 
@@ -495,24 +501,32 @@ Apply branch naming convention:
 | Quick fix (config, docs, CI) | `fix/<name>` |
 | Maintenance, deps, tooling | `chore/<name>` |
 
-If the user provided a name without a prefix, ask which prefix applies.
+If the name has no prefix, derive it from the dominant commit type in
+plan.md (feat → `feat/`, fix → `bugfix/`, chore → `chore/`) and state the
+choice. Ask only if the plan mixes types with no clear majority.
 If the name already has a correct prefix, proceed.
 
 ### 4.2 — Create the worktree
 
-First, resolve the base branch in this order:
+First, resolve the base branch (`develop` preferred, then `main`) and assign
+the ref you actually verified — a base that exists only on the remote is
+`origin/<name>`; the bare local name would be an invalid object and every
+later `<base>..HEAD` range would degrade to empty in silence:
 
-1. Check if `develop` exists (local or remote):
-   ```bash
-   git rev-parse --verify develop 2>/dev/null || git rev-parse --verify origin/develop 2>/dev/null
-   ```
-2. If found → use `develop` as base
-3. Otherwise, check if `main` exists:
-   ```bash
-   git rev-parse --verify main 2>/dev/null || git rev-parse --verify origin/main 2>/dev/null
-   ```
-4. If found → use `main` as base
-5. If neither exists → ask the user which branch to base from
+```bash
+BASE_BRANCH=""
+for cand in develop main; do
+  if git rev-parse --verify --quiet "refs/heads/$cand" >/dev/null; then
+    BASE_BRANCH="$cand"; break
+  elif git rev-parse --verify --quiet "refs/remotes/origin/$cand" >/dev/null; then
+    BASE_BRANCH="origin/$cand"; break
+  fi
+done
+```
+
+If `BASE_BRANCH` is empty, neither branch exists — ask the user which branch
+to base from. This value is the canonical base for Phases 5b, 6.5 and 7
+(strip the `origin/` prefix only where a platform CLI needs a branch *name*).
 
 Then create the worktree under LOCAL_MX:
 
@@ -528,28 +542,11 @@ git worktree list
 
 ### 4.3 — Run project setup
 
-From within the worktree directory, auto-detect and run setup:
-
-```bash
-cd .mx/<name>/worktree
-
-# Go
-if [ -f go.mod ]; then go mod download; fi
-
-# Node.js
-if [ -f package.json ]; then
-  if [ -f pnpm-lock.yaml ]; then pnpm install
-  elif [ -f yarn.lock ]; then yarn install
-  else npm install; fi
-fi
-
-# Python
-if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-if [ -f pyproject.toml ]; then poetry install; fi
-
-# Rust
-if [ -f Cargo.toml ]; then cargo build; fi
-```
+From inside the worktree (`.mx/<name>/worktree`), install dependencies
+using whatever the repo's lockfile / manifest indicates (go.mod,
+package.json + its lockfile, requirements.txt / pyproject.toml,
+Cargo.toml, …). If nothing is detected, skip — Phase 4.4's baseline run
+will surface a broken environment.
 
 ### 4.4 — Verify baseline
 
@@ -562,6 +559,11 @@ runner-detection rule — Phases 5 and 6 reuse it):
 2. `package.json` with a `test` script → `npm test` / `yarn test` / `pnpm test`
 3. Language detection: `.go` → `go test ./...`, `.rs` → `cargo test`,
    `.py` → `pytest`, `.cs` → `dotnet test`, `.swift` → `swift test`
+4. None of the above matched → say so once, ask the user for the test
+   command, and record it as the runner for this session. If the project
+   genuinely has no test suite, say so, and Non-negotiable 2's RED step is
+   satisfied by a reviewable manual check documented in the commit — never
+   by skipping it.
 
 **If baseline fails:**
 Report the failures and ask the user whether to proceed or investigate
@@ -744,6 +746,12 @@ git diff $(git merge-base HEAD <base-branch>)..HEAD
 
 Run /mx-review-triage with `--source review` directly (no auto-detect).
 
+If either review skill is missing, say so once and satisfy Non-negotiable
+4 with a single self-review of the branch diff labelled `single-context,
+no team review` (per mx-doctrine model-dispatch §5); do not silently skip
+Phase 5b, and do not treat the missing skill as permission to skip
+Phase 6.
+
 **GATE 3**: Show the triage summary, auto-approve all "fix" items, execute
 immediately (commits go through `/mx-commit --auto`). "Track" items are
 still written to TODOS.md and "Skip" items noted in the report — both
@@ -788,41 +796,28 @@ Final verification gate. No partial checks accepted.
 ### 6.1 — Run full test suite
 
 Run the complete test suite with the runner from Phase 4.4. No partial
-runs.
-
-Read the full output. Count failures.
-
-**If any test fails:** report the failures with output, stop. Do not
-proceed.
-**If all pass:** state the count explicitly: `N tests passing, 0 failures`.
+runs. **If all pass:** state the count explicitly:
+`N tests passing, 0 failures`.
 
 ### 6.2 — Check plan completion
 
-Read `LOCAL_MX/plan.md`.
+Read `LOCAL_MX/plan.md`; every task line must be `[x]`. If all are,
+report: `All N tasks complete.`
 
-For every task line, verify its status:
-- `[x]` — completed
-- `[ ]` — pending
-
-If any task is still `[ ]`, list them and stop. Do not claim completion
-with open tasks.
-If all tasks are `[x]`, report: `All N tasks complete.`
+**If any test fails or a task is still `[ ]`:** report it, then return to
+Phase 5a and fix it — this is option [A] of the abort path below and it is
+the default; you do not need permission to take it. Re-enter Phase 6 when
+green. Present the [A]/[B]/[C] menu and wait only when Non-negotiable 5's
+retry budget is exhausted on the same failure, or when the fix would
+change the spec.
 
 ### 6.3 — Remind ai-learning
 
-Show this reminder:
-
-```
-Update ~/.mx/<project>/ai-learning.md before closing this session.
-
-Format:
-| Date       | Issue or Learning | Root Cause | Prevention Rule |
-| ---------- | ----------------- | ---------- | --------------- |
-| YYYY-MM-DD | <what happened>   | <why>      | <how to avoid>  |
-
-Record at least one entry — even if no mistakes were made.
-Acceptable entries: techniques confirmed, observations, rules verified.
-```
+Remind the user to add an entry to `~/.mx/<project>/ai-learning.md` before
+closing this session. The entry format is in
+`${CLAUDE_SKILL_DIR}/references/ai-learning.md` (located in the same
+directory as this SKILL.md); if that file is missing, just remind — do not
+improvise a format.
 
 ### 6.4 — Gate result
 
@@ -859,7 +854,9 @@ Phase 6 ends here. Proceed to Phase 7.
 
 ### Abort path
 
-When verification fails, present three recovery options:
+When 6.2 sends you here — the retry budget is exhausted on the same
+failure, or the fix would change the spec — present three recovery
+options:
 
 ```
 [VERIFICATION FAILED]
@@ -876,7 +873,8 @@ Recovery options:
         Reminder:      git worktree remove .mx/<name>/worktree
 ```
 
-Wait for the user to choose. Do not attempt to fix anything automatically.
+Wait for the user to choose. Outside the two cases 6.2 names, do not
+present this menu at all — take [A] directly.
 
 ---
 
@@ -900,6 +898,14 @@ user if:
 
 Announce: `PR auto-published.`
 
+mx-pr prints `PR created: <url>` — append that URL to `LOCAL_MX/plan.md`
+as a line `PR: <url>` (mx-status reads it to reach its PR stage).
+
+Before announcing completion, report against mx-doctrine judgment-rubrics
+§2: restate each spec acceptance criterion with its evidence, list every
+path created, and give an explicit `Not done` section. Fallback if
+mx-doctrine is absent: tests + plan + PR URL + what was deferred.
+
 After /mx-pr completes (published or skipped), announce:
 
 ```
@@ -915,9 +921,12 @@ Triggered by `/mx-flow finish <name>`, independently from the main
 pipeline. Read `${CLAUDE_SKILL_DIR}/references/finish.md` and follow it in
 full.
 
-Summary of what it does: confirm the PR is merged → delete `plan.md` and
-`scope.yaml` → preserve the spec and ADR under `~/.mx/<project>/<name>/` →
-clean `.mx/<name>/tmp/` (user picks) → `git worktree remove` (never
-`--force` automatically) → `git branch -d` (never `-D` automatically) →
-summary. If the reference file is missing, follow this summary literally
-and stop at any git refusal to ask the user.
+Summary of what it does: establish merge evidence without asking (PR/MR
+state, or an empty `git diff origin/<base>..<branch>`) → delete `plan.md`
+and `scope.yaml` → preserve the spec and ADR under
+`~/.mx/<project>/<name>/` → delete `.mx/<name>/tmp/` → `git worktree
+remove` (never `--force` automatically) → `git branch -d`, escalating to
+`-D` on the expected squash-merge refusal once that evidence holds →
+summary. If the reference file is missing, follow this summary literally;
+still ask before `-D` when the branch carries content the base does not
+have or has unpushed commits, and never force past a dirty worktree.

@@ -2,8 +2,8 @@
 name: mx-brainstorm
 description: >
   Turn a rough idea into an approved design spec before any code is written:
-  one question at a time, 2-3 distinct approaches with trade-offs, spec
-  and ADR written to ~/.mx/<project>/<name>/. Hard gate: no implementation until
+  clarifying questions in one batch, 2-3 distinct approaches with trade-offs,
+  spec and ADR written to ~/.mx/<project>/<name>/. Hard gate: no implementation until
   the user approves the spec. Use at the start of any feature or non-trivial fix.
 author: Maxence Yang
 github: https://github.com/maxence2997/mx-harness
@@ -67,8 +67,16 @@ also edit source files.
 
 ## Step 1 — Understand the idea
 
+Exit early if the change is small enough that the spec would restate the
+diff: a single obvious fix, one call site, no design choice to make. Say
+"this is small enough to skip the spec — I'll do it directly" and stop. If
+the user disagrees, continue. Not under an orchestrator: when mx-flow
+invoked this skill the user already chose the full flow — write the spec.
+
 Read existing code relevant to the topic (if any) using Glob and Read.
-Then ask the user **one question at a time** to clarify:
+Then ask **all** your clarifying questions in ONE message. Before sending,
+list every open question you have; group them, then send the group. The
+ground to cover:
 
 - What problem does this solve?
 - Who is affected and how?
@@ -76,22 +84,28 @@ Then ask the user **one question at a time** to clarify:
 - What does success look like?
 
 Rules:
-- One question per message — never bundle multiple questions
-- Prefer multiple-choice over open-ended where possible
-- There is no question limit — keep asking until the picture is genuinely
-  clear
-- If invoked from mx-flow, the topic is already provided — begin with the
-  first clarifying question immediately, do not ask if the user wants to
-  start
+- One batch, 3-6 questions, hard cap 6. If you have more, ask the 6 whose
+  answers most change the design and note that others may follow
+- Every question carries (a) a proposed default and (b) one clause on why
+  it matters. The user may reply "defaults" / "just decide" to accept all
+  proposed defaults — then say which defaults you adopted and continue
+- Number the questions so the user can answer any subset; treat unanswered
+  items as accepting the stated default and say so
+- Prefer multiple-choice over open-ended where possible. Do not lead:
+  state the default as a default, not as a recommendation, and state the
+  trade-off it accepts
+- Stop asking when you can write all four spec sections — What / Why /
+  How / Out of scope — without a TBD that would change the chosen
+  approach. Remaining uncertainty that does not change the approach goes
+  into Out of scope, not into another question
+- Follow-up batches only when an answer opens a genuine new fork (a choice
+  whose options were not visible before). Max 2 follow-up batches; after
+  that, state the remaining uncertainty in Out of scope and move on
+- If invoked from mx-flow, the topic is already provided — send the batch
+  immediately, do not ask if the user wants to start
 
-When you believe you have enough context, ask before proposing approaches:
-
-```
-I think I have a clear enough picture. Anything else you'd like to clarify,
-or shall we move on to exploring approaches?
-```
-
-Do not proceed to Step 2 until the user confirms.
+When the answers are in, say what you now understand in 2-3 lines and move
+to Step 2 in the same message. The user can correct you at any point.
 
 ---
 
@@ -114,12 +128,13 @@ once, briefly.
 
 ## Step 3 — Refine
 
-Ask follow-up questions one at a time if the user's choice reveals new
-ambiguities. Iterate until the design is unambiguous.
+Ask follow-up questions as one further batch if the user's choice reveals
+new ambiguities (Step 1's batch rules apply, follow-up cap included).
+Iterate until the design is unambiguous or that cap is reached — what is
+still open then goes into the spec's Out of scope.
 
-**Hard gate: do not proceed to Step 4 until the user explicitly approves
-the design spec.** This gate stays human even when invoked from an
-orchestrator — it is mx-flow's GATE 1.
+Then go to Step 4 — the spec-approval gate lives there, after the spec
+exists.
 
 ---
 
@@ -127,9 +142,12 @@ orchestrator — it is mx-flow's GATE 1.
 
 Resolve the MX directory:
 - Get the repo root name: final path component of
-  `git rev-parse --show-toplevel`
+  `git rev-parse --show-toplevel`. If that command fails you are not in a
+  git repo: say so, ask the user for a project name, and use that
 - MX = `~/.mx/<project>/` (Unix) or `%USERPROFILE%\.mx\<project>\` (Windows)
-- Create `MX/<name>/` if it does not exist
+- Create `MX/<name>/` if it does not exist. If it cannot be created or
+  written, print the full spec inline in your final message and tell the
+  user it was not saved — never end silently
 
 Create `MX/<name>/spec.md`.
 
@@ -151,17 +169,28 @@ Spec format:
 <Explicitly list what this change does NOT cover>
 ```
 
-Show the design spec to the user for final review. Allow adjustments.
+### GATE — spec approval (human; mx-flow's GATE 1)
+
+**Hard gate: nothing is implemented until this passes.** It stays human
+even when invoked from an orchestrator.
+
+Display the written spec in full, then stop and wait. Approved = the user
+says so in words that name approval ("approved", "ok", "go", "ship it",
+"yes"). Silence, a question, or a comment on the content is NOT approval.
+A partial objection means: apply it, re-display, ask again.
+
+If the user edits `spec.md` after approving, re-read it before Step 5 and,
+if the chosen approach changed, re-run Step 5's ADR against the new
+content.
 
 ---
 
 ## Step 5 — Record ADR
 
-After the spec is confirmed, automatically write the ADR without asking.
+After the gate passes, write the ADR.
 
 Read `references/adr-format.md` (located in the same directory as this
-SKILL.md) for the format and rules. Populate from the brainstorm
-conversation and append to `MX/<name>/adr.md`.
+SKILL.md) and follow it.
 
 Report: `ADR saved to ~/.mx/<project>/<name>/adr.md`
 
@@ -177,4 +206,6 @@ ADR saved to ~/.mx/<project>/<name>/adr.md
 Ready for /mx-flow — this will decompose the spec into tasks and continue the workflow.
 ```
 
-Do not invoke mx-flow automatically. The user invokes it.
+Do not invoke mx-flow automatically. The user invokes it. When invoked
+from an orchestrator, omit the `Ready for /mx-flow` line and just return
+control.

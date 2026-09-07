@@ -23,6 +23,18 @@ legacy alias `Task`).
   self-checked verification as single-context (§5), and keep your final
   report terse.
 
+Two spellings differ across harnesses; neither changes the instruction:
+
+- Sub-skill invocations in these files are written as `/mx-<name>`
+  (Claude Code's slash form). On Codex the explicit trigger is
+  `$mx-<name>`; treat either spelling as "invoke that skill now", and
+  where no explicit invocation mechanism exists, follow the named skill's
+  SKILL.md inline.
+- Path convention (canonical statement: `mx-doctrine/SKILL.md` → "How
+  mx-* skills reference these files"): bare `references/<file>` for
+  same-directory reads; `${CLAUDE_SKILL_DIR}/../<skill>/references/<file>`
+  plus a missing-file fallback for cross-skill reads.
+
 ## §1 Verified environment facts (Claude Code, 2026-07-07)
 
 - Subagents spawn via the **Agent** tool (renamed from `Task` in v2.1.63;

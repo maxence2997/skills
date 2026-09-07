@@ -217,6 +217,20 @@ the old name before finishing.
   `git checkout` — commits were unaffected). Rule: **push before running
   `install.sh`**; on symlinked installs the script is only needed for
   real-directory targets (e.g. `~/.codex/skills`).
+- (2026-09-06) Full-suite re-audit against Provencher's "Rethinking skills
+  and prompts for GPT-6 Astra" (2026-09-04): 83 findings; report, data and
+  raw agent reports at `~/.mx/mx-harness/skill-audit-2026-09-06/` on the
+  owner's machine. Lessons: (1) undeclared pauses — mx-flow had 19
+  "wait/ask" points with only 4 in its gate table; every pause outside the
+  gate table is now evidence-gated or removed, and the pause inventory grep
+  below is part of the re-audit. (2) producer/consumer contracts drift
+  silently — mx-status Stage 6 read a `PR:` line nobody wrote; reviewer
+  severities (error/warning/suggestion) had no mapping to triage's P0–P3 —
+  the mapping now lives in `mx-review-triage/references/SEVERITY.md`.
+  (3) three executable defects hid in fenced bash (mx-pr base-branch
+  resolution yielding an empty range; `git rebase --abort && git reset`
+  short-circuit in content-check Pass 2; an unguarded `*.patch` glob) —
+  fenced bash blocks are now syntax-checked by the re-audit script.
 
 ## Honest limits of this diagnosis
 
@@ -252,6 +266,21 @@ grep -rn "mx-verify\|mx-tdd\|/team-review " */SKILL.md */README.md README.md
 #    back — re-extract per Leak 3.
 awk '/^### 6.5/{f=1} f{print; c++} f&&/^### [^6]|^## /{if(c>1)exit}' mx-flow/SKILL.md | wc -l
 grep -n 'inverse pairs\|autosquash' mx-flow/SKILL.md   # any hit besides a pointer = duplication returned
+
+# 5. Pause inventory. Every hit must be one of: a row in a gate table, an
+#    evidence-gated pause, or a justified irreversible/outward-facing stop.
+#    Anything else is a reflexive pause — remove it or gate it on evidence.
+grep -rn -iE "wait for the user|do not proceed|ask the user|wait for user" \
+  */SKILL.md */references/*.md
+
+# 6. Fenced bash blocks parse. Placeholder templates containing <...> are
+#    EXPECTED to fail — list them, do not treat them as defects.
+T=$(mktemp -d)
+for f in */SKILL.md */references/*.md; do b=$(echo "$f" | tr '/.' '__'); \
+  awk -v p="$T/$b" '/^```bash$/{n++;o=p"-"n".sh";next} /^```$/{o="";next} o{print > o}' "$f"; done
+for s in "$T"/*.sh; do bash -n "$s" 2>/dev/null || \
+  { echo "--- ${s#$T/}"; head -3 "$s"; }; done
+rm -rf "$T"
 ```
 
 Findings go through `maintenance.md` (same directory) — fix, then update

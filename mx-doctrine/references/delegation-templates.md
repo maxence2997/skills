@@ -119,8 +119,10 @@ CHECK, in order:
 3. Blast radius: does the diff touch anything the goal doesn't require?
 4. The tests themselves: do they bite? Would a mutation survive them?
 ACCEPTANCE:
-- Every finding: severity (P0 blocker / P1 required / P2 suggestion) +
-  file:line + the concrete failure scenario (inputs → wrong outcome).
+- Every finding: severity (P0 blocker / P1 required / P2 suggestion —
+  generic template; for mx-* reviews the scale is P0–P3 per
+  mx-review-triage/references/SEVERITY.md) + file:line + the concrete
+  failure scenario (inputs → wrong outcome).
 - If you find nothing, list the 3 riskiest spots you cleared and how —
   "LGTM" with no cleared-risk list is a failed review.
 [REPORT block]
@@ -148,9 +150,9 @@ HARD RULES (violating any = failed task):
 3. Minimal GREEN — only enough code to pass the current test; no
    speculative features, abstractions, or config.
 4. Refactor only after GREEN; re-run tests after each refactor step.
-5. Never weaken a gate: no skipped/deleted tests, no relaxed assertions,
-   no lint suppressions, no widened timeouts, no rewriting a RED test to
-   match broken behavior.
+5. Never weaken a gate to get green. Canonical list of what counts:
+   {{absolute path to mx-doctrine/references/judgment-rubrics.md}} → §4
+   signal 1.
 6. Comment policy — WHY-comments only, ≤3 lines, no WHAT-comments.
    Canonical: {{absolute path to mx-team-review/references/principles.md}}
    → P2.

@@ -71,6 +71,10 @@ question — when ANY of:
   lines the session didn't write, any `--force`. (Exception:
   `git push --force-with-lease` executed by mx-pr Step 6 after its
   tree-invariant-guarded content check is pre-authorized by that skill.)
+  (Exception: `git branch -D` executed by mx-flow Phase 8
+  (`mx-flow/references/finish.md` 8.6) after 8.1's merge evidence holds —
+  PR/MR state MERGED, or an empty `git diff origin/<base>..<branch>`, with
+  no unpushed commits and a clean worktree.)
 - Two instructions genuinely conflict and no precedence rule in the skill
   resolves it — surface the conflict, propose which side should win.
 - The remaining work forks on a taste or scope choice the user hasn't
@@ -98,10 +102,11 @@ precisely so you don't ask there.
 Any TWO of these (or #1 alone) mean the approach is wrong. Retrying harder
 is forbidden; back out and rethink or ask:
 
-1. The candidate fix requires weakening a gate: `--no-verify`, a lint
-   suppression, deleting/skipping a failing test, relaxing an assertion,
-   widening a timeout. **In a TDD flow this includes rewriting the RED
-   test to match broken behavior instead of fixing the code.**
+1. The candidate fix requires weakening a gate (canonical list — other
+   files point here): `--no-verify`, a lint suppression,
+   deleting/skipping a failing test, relaxing an assertion, widening a
+   timeout. **In a TDD flow this includes rewriting the RED test to match
+   broken behavior instead of fixing the code.**
 2. Each retry fails somewhere NEW (whack-a-mole = fighting the design).
 3. The diff keeps growing past the blast radius the task implied.
 4. You're editing generated, vendored, or explicitly frozen code to make

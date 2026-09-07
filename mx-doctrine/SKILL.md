@@ -61,6 +61,11 @@ When briefing a sub-agent, the orchestrator resolves these to absolute
 paths and puts the resolved paths in the brief — sub-agents must not be
 asked to re-derive sibling-skill paths.)
 
+Same-directory reads use a bare `references/<file>` path (the directory
+sits next to the SKILL.md); cross-skill reads use
+`${CLAUDE_SKILL_DIR}/../<skill>/references/<file>` and always carry a
+missing-file fallback.
+
 **Graceful degradation (partial installs):** if the referenced file does
 not exist, say so in one line, apply the inline summary at the reference
 site, and continue. Never silently skip the step, and never fabricate the
@@ -77,8 +82,8 @@ missing file's contents.
 3. **Two failed rounds max** per subtask at one tier (small tier/haiku:
    one), then escalate model or ask; 4 failed rounds total → stop and ask
    the user.
-4. **Never weaken a gate to get green** — no `--no-verify`, no skipped or
-   rewritten-to-pass tests, no relaxed assertions. A gate fighting you is
-   a design signal.
+4. **Never weaken a gate to get green** — full list:
+   `references/judgment-rubrics.md` §4 signal 1. A gate fighting you is a
+   design signal.
 5. **Every delegation carries**: goal + motivation, acceptance criteria,
    report format.

@@ -1,11 +1,11 @@
 ---
 name: mx-team-review
 description: >
-  Multi-perspective code review for git diffs or whole files: three parallel
-  reviewers (Senior Engineer, SRE Guardian, Future Maintainer) synthesized by a
-  Tech Lead, with language-specific standards (Go, C#). Use to review local
-  changes before commit/merge. Usage: /mx-team-review [diff-spec] or
-  /mx-team-review --repo <path>
+  Deep code review of a local git diff or files against this user's own
+  engineering standards (Go, C#), written to a report file that
+  /mx-review-triage consumes. Use before commit/merge when you want the
+  standards-based review, not a quick diff scan. Usage: /mx-team-review
+  [diff-spec] | --repo <path>
 author: Maxence Yang
 github: https://github.com/maxence2997/mx-harness
 source: https://github.com/maxence2997/mx-harness/tree/main/mx-team-review
@@ -31,10 +31,10 @@ allowed-tools:
 ## Orchestrated mode
 
 Step 6 (interactive review of the report) pauses for the user. **When
-invoked from an orchestrator that declares auto-proceed (e.g. mx-flow
-Phase 5b), skip the pause**: save and display the report, then return
-control — triage happens in the orchestrator's next step. When invoked
-directly by the user, Step 6 applies as written.
+invoked from an orchestrator at all (mx-flow Phase 5b, or any orchestrator
+that declares auto-proceed for a gate), skip the pause**: save and display
+the report, then return control — triage happens in the orchestrator's
+next step. When invoked directly by the user, Step 6 applies as written.
 
 ---
 
@@ -64,6 +64,26 @@ Display: `📋 Reviewing: {description of what is being reviewed}`
 
 ---
 
+## Step 1.5: Right-Size the Review
+
+Size the job before spending anything on it. In diff mode, read the size
+off the diff Step 1 already ran. In repo mode, expand the target path with
+Glob now to get the file list (Step 3 reuses it).
+
+- **No source files** (docs/config only — `.md`, `.txt`, `.json`, `.yaml`,
+  `.yml`, `.toml`, `.xml`): say so and run a **single Future Maintainer
+  pass** (Step 4B, perspective 3 only — no Tech Lead synthesis). **Do not
+  dispatch reviewers.** Files routed here count as explicitly targeted, so
+  Step 3 reads them rather than applying its config skip-list.
+- **Under ~30 changed lines in a single file** (diff mode; in repo mode, a
+  single file of comparable size): use **Step 4B** regardless of Agent-tool
+  availability.
+- **Otherwise**: continue with the full pipeline.
+
+State which path you took in the report header (Step 5).
+
+---
+
 ## Step 2: Language Detection
 
 Scan file extensions from the diff output (file paths in diff headers) or
@@ -73,14 +93,15 @@ the target file paths:
 |-----------|--------------|
 | `.go` | `references/golang.md` |
 | `.cs` | `references/dotnet.md` |
-| other | skip (no language spec loaded) |
+| other | skip (no language spec applies) |
 
-**Always load** `references/principles.md` (cross-language core
-principles). Then load the matched language-specific spec file(s).
-If multiple languages detected, load all matched specs.
+**Record which spec files apply**: always `references/principles.md`
+(cross-language core principles), plus every matched language spec.
+**Do not read them yet** — Step 4 decides how they are delivered.
 
 Reference files are located relative to this SKILL.md file (sibling
-`references/` directory).
+`references/` directory). Record their **absolute paths** — Step 4A hands
+those paths to subagents.
 
 Display: `🔍 Detected: {language list}`
 
@@ -95,8 +116,8 @@ review material.
 
 ### Repo Mode
 
-Use Glob to list files matching the path. Use Read to load each file's
-content.
+Reuse the file list Step 1.5 already produced with Glob (Glob it now if it
+is not to hand). Use Read to load each file's content.
 
 **Skip these files/directories:**
 - Binary files (images, compiled assets)
@@ -120,8 +141,9 @@ capabilities:**
 - **Step 4A** — If the **Agent tool** (or its legacy alias **Task**) is
   available (e.g., Claude Code): dispatch four subagents (three reviewers
   in parallel, then one synthesizer).
-- **Step 4B** — If neither is available (e.g., Copilot, Cursor, or other
-  platforms): perform all four perspectives sequentially in a single pass.
+- **Step 4B** — If neither is available (e.g. Codex CLI, Copilot, Cursor,
+  or when you are yourself a subagent): perform all four perspectives
+  sequentially in a single pass.
 
 Both modes produce the **same final output**, so Step 5 works identically.
 
@@ -135,8 +157,9 @@ message.
 
 Each subagent receives:
 - Full diff or file content from Step 3
-- Full content of `references/principles.md`
-- Full content of matched language spec files
+- The **absolute paths** of the spec files recorded in Step 2
+  (`references/principles.md` plus any matched language spec) — the
+  subagent reads them itself; do not inline their contents
 - Its own perspective prompt plus the shared schema and line-number rules
   (all from `references/prompts.md`)
 
@@ -144,19 +167,33 @@ Model: set `model: "sonnet"` (mid tier) for the three reviewers.
 
 Wait for all three to complete. Collect their JSON outputs.
 
+If a reviewer returns no output, an error, or unparseable JSON: **retry
+that one reviewer once**. If it fails again, continue with the remaining
+reviewers and put `⚠️ <perspective> review unavailable — report based on N
+of 3 perspectives` in the report header notes (Step 5), alongside any
+`(single-pass mode)` marker. **Never silently drop a perspective.** If all
+three fail, stop and say the review could not be produced — never emit an
+empty report, which reads as a clean one.
+
+Check each reviewer's `specs_read` field. If one is missing or empty, that
+reviewer did not confirm reading the standards — note
+`⚠️ <perspective> did not confirm reading the standards` in the report
+header too.
+
 **Phase 2 — Tech Lead (sequential):**
 
 Dispatch Agent 4 (Tech Lead) with:
-- All three JSON outputs from Phase 1
+- All three JSON outputs from Phase 1 (or the surviving ones)
 - The original diff/code content (for cross-verification)
-- The `references/principles.md` content (for severity calibration)
+- The **absolute path** of `references/principles.md` (for severity
+  calibration) — the subagent reads it itself; do not inline its content
 
 Model: `model: "sonnet"` by default. **Escalate the Tech Lead to the
 strongest available tier** (e.g. `opus`) when the diff touches any of:
 concurrency primitives, auth/security, data migration, or a public API
 surface — synthesis quality there is worth the cost (see
-`../mx-doctrine/references/model-dispatch.md` §4; if missing, apply this
-sentence as written).
+`${CLAUDE_SKILL_DIR}/../mx-doctrine/references/model-dispatch.md` §4; if
+missing, apply this sentence as written).
 
 Collect the final merged JSON.
 
@@ -165,6 +202,9 @@ Collect the final merged JSON.
 Perform all four perspectives yourself, sequentially, using the prompts
 from `references/prompts.md`:
 
+0. Read the spec files recorded in Step 2 (`references/principles.md` plus
+   any matched language spec). This is the point at which they are needed —
+   read them now, not earlier.
 1. Adopt the **Senior Engineer** perspective. Analyze the entire code.
    Produce its JSON output (`"agent": "senior-engineer"`).
 2. Adopt the **SRE Guardian** perspective. Analyze independently — do not
@@ -187,7 +227,9 @@ readers calibrate their trust.
 
 ## Step 5: Report Generation
 
-Take the Tech Lead's final JSON and format the report.
+Take the Tech Lead's final JSON — or, on the Step 1.5 docs-only path, the
+single reviewer's JSON, whose `issues` and `highlights` have the same
+shape — and format the report.
 
 **Report format:**
 
@@ -195,6 +237,7 @@ Take the Tech Lead's final JSON and format the report.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 Review: {description of scope}
    {n} files reviewed  |  {language list}
+   {header notes}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📁 {file_path}
@@ -223,6 +266,17 @@ Take the Tech Lead's final JSON and format the report.
 
 Severity emoji: 🔴 error, 🟡 warning, 🔵 suggestion
 
+Triage maps these to P0–P3 using
+`${CLAUDE_SKILL_DIR}/../mx-review-triage/references/SEVERITY.md` (if
+missing, the mapping still is not yours to make) — do not emit P-levels
+here.
+
+`{header notes}` carries the markers that tell the reader how much to trust
+this report — omit the line when there are none:
+- `(single-pass mode)` when Step 4B produced it
+- the Step 1.5 path taken when it was not the full pipeline
+- any `⚠️ …` degradation notice raised in Step 4A
+
 For issues with `line: 0`, display `L-` instead of `L0`.
 
 If there are no highlights, omit the ✨ Highlights section entirely.
@@ -233,8 +287,9 @@ If there are no highlights, omit the ✨ Highlights section entirely.
    - Resolve repo root: `REPO_ROOT=$(git rev-parse --show-toplevel)`
    - If running inside a linked worktree, `.mx/` lives in the MAIN
      repository, not the worktree — resolve it too:
-     `MAIN_ROOT=$(dirname "$(git rev-parse --git-common-dir)")`
-     (in a normal checkout `MAIN_ROOT` equals `REPO_ROOT`)
+     `MAIN_ROOT=$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)`
+     (in a normal checkout `MAIN_ROOT` resolves to the same directory as
+     `REPO_ROOT`)
    - Look for any `.mx/*/plan.md` under `$REPO_ROOT`, then under
      `$MAIN_ROOT` — take the first match as the active feature
    - If found → report directory is `.mx/<name>/tmp/` (create if needed)

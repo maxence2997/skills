@@ -40,6 +40,7 @@
 
 - Business rules should not know about HTTP status codes, database drivers, or serialization formats.
 - Infrastructure adapters wrap external dependencies and expose clean interfaces to the business layer.
+- Dependencies point inward only (infrastructure → application → domain); domain code never imports infrastructure packages.
 
 ---
 
@@ -47,7 +48,9 @@
 
 ### Core Rules
 
-**Never swallow errors silently.** Every catch/error path must log, wrap, or propagate.
+**Every error path must log, wrap-and-propagate, or be handled explicitly — never silently discarded. Log exactly once, at the boundary that handles the error; a function that wraps and returns must not also log (double-logging hides the real handler).**
+
+This is the canonical error-path rule for this skill. Nowhere else — later in this file, in a language spec, in `_template.md` — may state a competing version of it; point back here instead. The list below expands how to satisfy this rule; it does not replace it. Where a language spec's example shows log-and-re-throw, this paragraph wins.
 
 **Preserve error chain / stack trace.** Re-throwing must not lose the original error context.
 - C#: `throw;` not `throw ex;`
@@ -61,11 +64,11 @@
 - C#: `using` / `await using` declarations
 - Go: `defer` for cleanup
 
-**Every `catch` / error branch must either:**
-1. Log with full context (error object + business identifiers) and re-throw, OR
-2. Handle the error explicitly (return appropriate response, retry, fallback)
+**Every `catch` / error branch must satisfy the canonical rule above.** In practice that is one of:
+1. Wrap with context and propagate — do not log here; the handling boundary logs, OR
+2. Handle the error explicitly (return appropriate response, retry, fallback) and log it once, with the error object and the business identifiers
 
-Never just log and continue silently — that hides bugs.
+Logging and then continuing as if nothing happened is not "handled" — that hides bugs.
 
 ---
 
@@ -113,7 +116,7 @@ Component tests validate complete scenarios with external dependencies mocked ou
 - Serialization / deserialization (test real JSON handling)
 - DI wiring (use real or test-specific DI container)
 
-**Scenario naming convention:**
+**Component-test scenario IDs (traceability labels, not function names):**
 Group by feature area with clear scenario IDs for traceability:
 ```
 A1 — Normal lifecycle (start → process → stop)
@@ -150,9 +153,9 @@ Time is an external dependency — treat it like one. A test that reads the real
 - Never assert on real elapsed time (`elapsed < 50ms`) — that measures machine speed, not behavior.
 - Real-time timeouts in tests are allowed only as a failure backstop (catching a deadlock), never as the synchronization mechanism.
 
-Flag violations as P1 — flaky tests erode trust in the whole suite and mask real races.
+Flag violations as `warning` (rule area P1) — flaky tests erode trust in the whole suite and mask real races.
 
-### Test Naming Convention
+### Test function naming
 
 Use descriptive names that express intent:
 ```
@@ -183,7 +186,7 @@ Good: `TestCreateOrder_WhenAmountIsZero_ShouldReturnValidationError`
 | Error | Requires human intervention, must include error/exception object | On |
 | Critical/Fatal | Service cannot continue, should trigger alerts | On |
 
-**Every error/catch path must log or propagate — never swallow silently.**
+**Error-path handling is defined once, in "P0 — Exception / Error Handling" above — apply that rule, not a variant of it.** When an error path does log:
 
 - Log must include the error/exception object (not just a message string).
 - Log must include business context (e.g., order ID, user ID) for traceability.
@@ -222,9 +225,9 @@ The reviewer's job here is to ask, for every new abstraction, parameter, branch,
 
 ### Severity Calibration
 
-- **High**: a new public interface / package / framework added for one use case.
-- **Medium**: unnecessary config knobs, defensive checks for guaranteed-safe inputs.
-- **Low**: a single helper that could be inlined; small structural redundancy.
+- **error**: a new public interface / package / framework added for one use case.
+- **warning**: unnecessary config knobs, defensive checks for guaranteed-safe inputs.
+- **suggestion**: a single helper that could be inlined; small structural redundancy.
 
 ---
 
@@ -250,9 +253,9 @@ The reviewer's job is to verify the diff stays within the boundary the PR descri
 
 ### Severity Calibration
 
-- **High**: a structural refactor bundled into a feature / fix PR.
-- **Medium**: multiple unrelated cleanups across several files.
-- **Low**: a single drive-by reformat or rename in one file.
+- **error**: a structural refactor bundled into a feature / fix PR.
+- **warning**: multiple unrelated cleanups across several files.
+- **suggestion**: a single drive-by reformat or rename in one file.
 
 ---
 

@@ -5,11 +5,14 @@ Multi-perspective code review using three AI review agents (Senior Engineer, SRE
 ## How it works
 
 1. Parses git diff or reads files directly
-2. Detects programming languages from file extensions
-3. Runs three independent review perspectives (parallel when possible)
-4. Tech Lead synthesizes findings — deduplicates, resolves conflicts, filters noise
-5. Presents interactive report for review
-6. Saves report to `.mx/<name>/tmp/` (or `/tmp/review-reports/` if no active feature)
+2. Right-sizes the review — a docs/config-only diff gets a single Future Maintainer pass, and a small single-file diff runs in single-pass mode
+3. Detects programming languages from file extensions
+4. Runs three independent review perspectives (parallel when possible), unless step 2 scaled the review down
+5. Tech Lead synthesizes findings — deduplicates, resolves conflicts, filters noise (skipped on the scaled-down path)
+6. Saves the report to `.mx/<name>/tmp/` (or `/tmp/review-reports/` if no active feature) and displays it
+7. Presents the report for interactive review (skipped when an orchestrator invoked it)
+
+The report header states which path was taken, and flags any perspective that failed or did not confirm reading the standards — a degraded review never looks like a clean one.
 
 ## Modes
 

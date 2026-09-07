@@ -13,19 +13,11 @@
 
 ## Review Priority
 
-| Priority | Category | Notes |
-|----------|----------|-------|
-| P0 | Observability / Logging | No logs in production = blind debugging |
-| P0 | [Language-specific high risk] | e.g. goroutine leak, unsafe block |
-| P1 | Test coverage | Business logic must be tested |
-| P1 | Comments (Why) | Code says what. Comments say why. |
-| P2 | Error handling | |
-| P2 | Performance | |
-| P3 | [Language idioms] | e.g. interface design, context passing |
+Priorities are fixed in `principles.md` — do not restate them here. This file holds language-specific patterns only.
 
 ---
 
-## P0 — Observability / Logging
+## Observability / Logging
 
 [Describe the logging standard for this language/framework]
 
@@ -41,11 +33,11 @@
 - Error:
 - Critical/Fatal:
 
-**Every error path must log or propagate — silent discard is forbidden.**
+**Error-path handling: follow `principles.md` §P0 — Exception / Error Handling. Do not restate the rule here.**
 
 ---
 
-## P0 — [Language-Specific High Risk]
+## [Language-Specific High Risk]
 
 [Describe the most dangerous language-specific issue]
 
@@ -59,7 +51,7 @@
 
 ---
 
-## P1 — Test Coverage
+## Test Coverage
 
 **Business logic must have tests. Infrastructure layer (DB migrations, SDK wrappers) is exempt.**
 
@@ -71,11 +63,11 @@ Required scenarios:
 - ✅ Error path (behavior when dependencies fail)
 - ✅ Business rule violations (inputs that should be rejected)
 
-**Test naming convention:** `FunctionName_StateUnderTest_ExpectedBehavior`
+**Test naming convention:** `MethodName_StateUnderTest_ExpectedBehavior`
 
 ---
 
-## P1 — Comments (Why)
+## Comments (Why)
 
 Code says what. Comments say why.
 
@@ -93,7 +85,7 @@ Code says what. Comments say why.
 
 ---
 
-## P2 — Error Handling
+## Error Handling
 
 [Describe the language's error handling standards]
 
@@ -104,7 +96,7 @@ Code says what. Comments say why.
 
 ---
 
-## P2 — Performance
+## Performance
 
 [Describe common performance issues specific to this language]
 
@@ -115,12 +107,12 @@ Code says what. Comments say why.
 - [e.g. unnecessary boxing, buffer reuse]
 
 **Caching:**
-- High-frequency, low-change data without a cache strategy is a P2 issue.
+- High-frequency, low-change data without a cache strategy is a `suggestion` (rule area P2).
 - Cache TTL must be justified in a comment.
 
 ---
 
-## P3 — [Language Idioms]
+## [Language Idioms]
 
 [Describe language-specific best practices that reviewers should check]
 

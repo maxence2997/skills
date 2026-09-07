@@ -24,7 +24,7 @@ _logger.LogInformation($"Order {orderId} created by {userId}");
 _logger.LogInformation("Order {OrderId} created by {UserId}", orderId, userId);
 ```
 
-**Every `catch` block must log with exception object:**
+**A `catch` that handles the error logs it once, with the exception object** (canonical rule: `principles.md` → *P0 — Exception / Error Handling*):
 ```csharp
 // ❌ swallowed
 try { await _repo.SaveAsync(order); }
@@ -33,12 +33,18 @@ catch (Exception) { }
 // ❌ message only, no stack trace
 catch (Exception ex) { _logger.LogError("Save failed"); }
 
-// ✅ exception object + business context
+// ❌ log-and-rethrow: the boundary above will log again (double-logging)
+catch (Exception ex) { _logger.LogError(ex, "Save failed"); throw; }
+
+// ✅ handling boundary: exception object + business context, logged once
 catch (Exception ex)
 {
     _logger.LogError(ex, "Failed to save order {OrderId} for user {UserId}", order.Id, order.UserId);
-    throw;
+    return SaveResult.Failed(order.Id);
 }
+
+// ✅ not the handling boundary: propagate without logging
+catch (Exception ex) { throw new OrderPersistenceException(order.Id, ex); }
 ```
 
 **CorrelationId / TraceId via `ILogger.BeginScope`:**

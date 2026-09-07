@@ -52,6 +52,7 @@ When **adding** a new skill, also append it to `install.sh`'s `SKILLS=(...)` arr
 
 - `SKILL.md` and `README.md` → **always overwritten** (treat as canonical from the repo)
 - `references/*` → only overwritten if the file's current hash matches the recorded hash (i.e. the user hasn't edited it locally)
+- It installs from the **remote `main` tarball**, never your working tree — push before running it. On a symlinked dev install (`~/.claude/skills/mx-*` pointing into this repo) run it only for real-directory targets such as `~/.codex/skills`; running it otherwise copies the remote files back through the symlinks into your working tree. Rationale: `mx-doctrine/references/diagnosis.md`, 2026-08-19 entry.
 
 This means: **never put user-tunable content in SKILL.md or README.md**. Templates, prompts, and anything the user might customize go under `references/`. Putting user-editable content in the top two files will silently clobber their changes on next install.
 
@@ -61,7 +62,7 @@ Skills coordinate via two parallel directory trees. If you're editing a skill th
 
 | Variable | Path | Lifetime |
 |---|---|---|
-| `GLOBAL_MX` | `~/.mx/<project>/<name>/` | Permanent — specs, ADRs, brag entries |
+| `GLOBAL_MX` | `~/.mx/<project>/<name>/` | Permanent — specs, ADRs |
 | `LOCAL_MX` | `<repo-root>/.mx/<name>/` | Ephemeral — plans, tmp drafts, gitignored |
 
 Resolve them with:

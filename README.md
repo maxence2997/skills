@@ -84,16 +84,16 @@ One command in. A few decisions from you. PR out.
 
 ### Standalone skills
 
-These skills also run inside `mx-flow`, but you can use them independently anytime:
+Most of these also run inside `mx-flow`; all of them work standalone.
 
 | Skill                                  | Description                                                         |
 | -------------------------------------- | ------------------------------------------------------------------- |
 | [mx-brainstorm](mx-brainstorm/)       | Turn a rough idea into an approved design spec (with ADR)           |
-| [mx-team-review](mx-team-review/)     | 3-perspective code review — Senior Engineer, SRE, Future Maintainer |
+| [mx-team-review](mx-team-review/)     | Standards-based 3-perspective code review (Go, C#) — Senior Engineer, SRE, Future Maintainer |
 | [mx-review-triage](mx-review-triage/) | Triage review findings into fix / track / skip buckets              |
 | [mx-commit](mx-commit/)               | Structured commit with enforced message format                      |
-| [mx-pr](mx-pr/)                       | Draft, review, and publish a PR to GitHub / GitLab / Bitbucket      |
-| [mx-status](mx-status/)               | Show current stage, progress, and next action for all features      |
+| [mx-pr](mx-pr/)                       | Draft, review, and publish a PR to GitHub / GitLab (Bitbucket experimental) |
+| [mx-status](mx-status/)               | Show which mx-flow stage each feature is at, its progress, and the next command |
 | [mx-doctrine](mx-doctrine/)           | Shared execution doctrine: model dispatch, escalation, verification, judgment rubrics |
 
 ---
@@ -121,7 +121,9 @@ Inspect the script first if you'd rather: [install.sh](install.sh).
 npx skills add https://github.com/maxence2997/mx-harness --skill <skill-name> -g -y
 ```
 
-> **If you cloned the repo directly:** `./install.sh` runs the same install locally. `git pull` updates skills installed via symlink.
+> This single-skill path bypasses `install.sh`'s hash lock, so it overwrites any local customizations you made under that skill's `references/`.
+
+> **If you cloned the repo directly:** `install.sh` always installs from GitHub `main`, never from your working tree — push your local changes before running it. On a symlinked dev install, use `git pull` alone and do **not** run `install.sh`: it would copy the remote files back through the symlinks into your working tree.
 
 ---
 

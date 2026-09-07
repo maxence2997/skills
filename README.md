@@ -77,6 +77,7 @@ One command in. A few decisions from you. PR out.
 
 ```
 /mx-flow add Redis caching to the search endpoint
+/mx-flow status [name]                      # where every feature stands, next command
 /mx-flow finish search-cache                # post-merge cleanup
 ```
 
@@ -88,12 +89,11 @@ Most of these also run inside `mx-flow`; all of them work standalone.
 
 | Skill                                  | Description                                                         |
 | -------------------------------------- | ------------------------------------------------------------------- |
-| [mx-brainstorm](mx-brainstorm/)       | Turn a rough idea into an approved design spec (with ADR)           |
+| [mx-brainstorm](mx-brainstorm/)       | Turn a rough idea into an approved design spec (ADR when a real choice was made) |
 | [mx-team-review](mx-team-review/)     | Standards-based 3-perspective code review (Go, C#) — Senior Engineer, SRE, Future Maintainer |
 | [mx-review-triage](mx-review-triage/) | Triage review findings into fix / track / skip buckets              |
 | [mx-commit](mx-commit/)               | Structured commit with enforced message format                      |
 | [mx-pr](mx-pr/)                       | Draft, review, and publish a PR to GitHub / GitLab (Bitbucket experimental) |
-| [mx-status](mx-status/)               | Show which mx-flow stage each feature is at, its progress, and the next command |
 | [mx-doctrine](mx-doctrine/)           | Shared execution doctrine: model dispatch, escalation, verification, judgment rubrics |
 
 ---

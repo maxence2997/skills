@@ -22,7 +22,7 @@ set -euo pipefail
 
 REPO="https://github.com/maxence2997/mx-harness"
 LOCK="$HOME/.mx/.mx-harness.lock"
-SKILLS=(mx-doctrine mx-flow mx-brainstorm mx-team-review mx-review-triage mx-commit mx-pr mx-status)
+SKILLS=(mx-doctrine mx-flow mx-brainstorm mx-team-review mx-review-triage mx-commit mx-pr)
 SEARCH_PATHS=(
   "$HOME/.claude/skills"         # Claude Code
   "$HOME/.config/claude/skills"  # Claude Code (XDG)

@@ -44,7 +44,7 @@ Three places must stay in sync — change them together or the repo lies:
 2. **`<skill>/README.md`** — user-facing "what it does" list
 3. **`README.md`** (root) — skills table, if the one-liner changed
 
-When **adding** a new skill, also append it to `install.sh`'s `SKILLS=(...)` array (line ~25) or it won't ship.
+When **adding** a new skill, also append it to `install.sh`'s `SKILLS=(...)` array (line ~25) or it won't ship. When **removing** one, drop it from that array, delete its directory, and remove the installed copies by hand (`~/.claude/skills/<skill>`, `~/.codex/skills/<skill>`, its lines in `~/.mx/.mx-harness.lock`) — `install.sh` never deletes.
 
 ## `install.sh` behavior — don't break the lock
 

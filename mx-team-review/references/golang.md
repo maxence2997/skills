@@ -233,22 +233,57 @@ type Session struct {
     now func() time.Time
 }
 func (s *Session) Expired() bool {
-    return s.now().After(s.expiresAt)
+    return s.now().After(s.expiresAt)   // comparing an injected instant is fine — the test chose now()
 }
 ```
 
-### No `time.Sleep` for synchronization
+### Forbidden in `_test.go` (outside a `synctest` bubble)
+`time.Now`, `time.Since`, `time.Until`, `time.Sleep`, `time.After`, `time.Tick`,
+`time.NewTimer` / `time.NewTicker`, `context.WithTimeout` / `WithDeadline` used as
+a wait, polling helpers (`require.Eventually`, `assert.Eventually`,
+`EventuallyWithT`, gomega `Eventually`), and `Time.After` / `Before` / `Equal` /
+`Sub` on values that came from the real clock. Each one ties the outcome to CPU
+speed or scheduler load and each has flaked on loaded CI. Tests use fixed instants
+(`time.Date(...)`) fed through the injected clock, or `testing/synctest` (Go 1.25+),
+whose bubble runs the code under a fake clock so production timers and sleeps fire
+instantly and deterministically.
+
+Choose by what the code does with time: logic that depends on an instant (expiry,
+scheduling windows) → inject `now`; code that drives its own timers, tickers or
+timeouts (retry backoff, heartbeats) → run it under `synctest`, where
+`context.WithTimeout` deadlines also follow the fake clock.
+
+### No `time.Sleep` / `time.After` for synchronization
 ```go
 // ❌ bets on scheduler timing — flakes on loaded CI
 go worker.Start()
 time.Sleep(100 * time.Millisecond)
 require.True(t, worker.Running())
 
-// ✅ wait on an observable signal; real time only as deadlock backstop
-go worker.Start()
+// ❌ still wall-clock: on a slow machine the timeout arm races the signal
 select {
 case <-worker.Ready():
 case <-time.After(5 * time.Second):
     t.Fatal("worker never became ready")
 }
+
+// ✅ wait on the observable signal only; a hang is caught by the command-line `go test -timeout`
+go worker.Start()
+<-worker.Ready()
+require.True(t, worker.Running())
+
+// ✅ time-dependent logic under a fake clock — nothing waits for real time
+synctest.Test(t, func(t *testing.T) {
+    s := NewSession(24 * time.Hour) // production code may call time.Now / time.After
+    time.Sleep(25 * time.Hour)      // inside the bubble: advances the fake clock, returns at once
+    synctest.Wait()
+    require.True(t, s.Expired())
+})
 ```
+
+### Deterministic environment — Go APIs
+- Randomness: inject `*rand.Rand` or seed it (`rand.New(rand.NewSource(1))`); never assert on `uuid.New()` output.
+- Environment and files: `t.Setenv`, `t.TempDir()` — the framework restores both after the test.
+- Network: `net.Listen("tcp", "127.0.0.1:0")` or `httptest.NewServer`; never a fixed port.
+- Leaks: `goleak.VerifyTestMain(m)` in `TestMain`, or a `synctest` bubble (fails if goroutines outlive it).
+- CI invocation: `go test -race -shuffle=on -count=1 -timeout 10m ./...` — shuffle and count catch order dependence; `-timeout` is the only wall-clock backstop.

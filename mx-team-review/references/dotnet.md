@@ -294,10 +294,22 @@ public bool IsExpired() => DateTime.UtcNow > _expiresAt;
 public OrderSession(TimeProvider clock) => _clock = clock;
 public bool IsExpired() => _clock.GetUtcNow() > _expiresAt;
 
+// ✅ delays and timers go through the same clock, so FakeTimeProvider.Advance fires them
+await Task.Delay(backoff, _clock, ct);                              // .NET 8 overload
+using var tick = _clock.CreateTimer(Heartbeat, null, period, period);
+
 // test (Microsoft.Extensions.TimeProvider.Testing):
 var clock = new FakeTimeProvider();
 clock.Advance(TimeSpan.FromHours(2));
 ```
+
+### Forbidden in test code
+`DateTime.Now` / `UtcNow`, `Stopwatch`, `Thread.Sleep`, `Task.Delay`,
+`WaitAsync(TimeSpan)`, `CancellationTokenSource(TimeSpan)` used as a wait, polling
+loops (`while (!done) await Task.Delay(…)`, `SpinWait.SpinUntil(…, timeout)`,
+`Task.WhenAny(work, Task.Delay(…))`), and comparisons between timestamps taken from
+the real clock. Tests use fixed `DateTimeOffset` values through `FakeTimeProvider`
+and advance it explicitly.
 
 ### No `Task.Delay` for synchronization
 ```csharp
@@ -305,8 +317,19 @@ clock.Advance(TimeSpan.FromHours(2));
 await Task.Delay(100);
 Assert.True(worker.IsRunning);
 
-// ✅ await an observable signal; real time only as deadlock backstop
+// ❌ still wall-clock: the 5 s backstop races the signal on a slow machine
 await worker.Started.WaitAsync(TimeSpan.FromSeconds(5));
+
+// ✅ await the observable signal only; a hang is caught by the command-line `dotnet test --blame-hang-timeout`
+await worker.Started;
+Assert.True(worker.IsRunning);
 ```
+
+### Deterministic environment — C# APIs
+- Randomness: inject `Random` (or an `IRandom` abstraction) with a fixed seed; never assert on `Guid.NewGuid()` output.
+- Configuration and environment: inject `IConfiguration` / options built in memory by the test; never read `Environment.GetEnvironmentVariable` in code under test.
+- Files and network: a per-test directory under `Path.GetTempPath()` removed in `Dispose`; `WebApplicationFactory<T>` or a fake `HttpMessageHandler` instead of real ports.
+- Shared state: xUnit runs test classes in parallel — tests that share a fixture go in one `[Collection]`, never in static fields.
+- CI invocation: `dotnet test --blame-hang-timeout 10m` — the only wall-clock backstop; a hang surfaces as a blame dump, not as a sleep in a test.
 
 > See `principles.md` for general Separation of Concerns / Single Responsibility rules.

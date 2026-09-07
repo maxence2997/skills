@@ -146,14 +146,27 @@ Every tested unit should cover:
 
 ### Deterministic Time (no wall-clock in tests)
 
-Time is an external dependency — treat it like one. A test that reads the real clock is nondeterministic by construction.
+Time is an external dependency — treat it like one. A test that reads the real clock is nondeterministic by construction, and a test that waits on the real clock bets on CPU speed and scheduler load.
 
 - Code under test must not read the system clock directly (`time.Now()`, `DateTime.UtcNow`) when the value affects behavior — inject a clock the test controls (per-language pattern in `golang.md` / `dotnet.md`).
-- Never use real sleeps to synchronize with concurrent work — `sleep(100ms)` is a bet on scheduler timing and flakes on slow CI. Synchronize on an observable signal (channel, event, callback) or advance a fake clock.
-- Never assert on real elapsed time (`elapsed < 50ms`) — that measures machine speed, not behavior.
-- Real-time timeouts in tests are allowed only as a failure backstop (catching a deadlock), never as the synchronization mechanism.
+- Test code never touches the real clock: no sleeps, no timers, no timeouts, no polling helpers (`Eventually`-style asserts poll on real ticks against a real deadline), no reading "now". Synchronize on an observable signal (channel, event, callback) or advance a fake clock.
+- Wall-clock values are never a test subject: do not assert on elapsed time (`elapsed < 50ms`), and do not compare or order timestamps taken from the real clock (Go `t.After` / `t.Before` / `time.Since`, C# `DateTime.Now` comparisons). Assert against fixed instants the fake clock supplies.
+- The only wall-clock backstop against a hung test is the timeout on the test command line (`go test -timeout 10m ./...`, `dotnet test --blame-hang-timeout 10m`), set where the suite is invoked (Makefile, CI) — never inside test code or test-project configuration, and never a per-test timer such as `time.After` or `Task.Delay`.
 
-Flag violations as `warning` (rule area P1) — flaky tests erode trust in the whole suite and mask real races.
+Flag violations as `error` (rule area P1) — a test that touches the real clock is a latent CI failure and can mask a real race; triage maps `error` to P1, or P0 when it hides a race.
+
+### Deterministic Environment (no CPU, scheduler or machine dependence)
+
+The same reasoning applies to every other input the machine supplies. A test must produce the same result on a loaded CI runner, in any order, and in parallel with its neighbours.
+
+- Randomness is injected or seeded (`rand.New(rand.NewSource(1))`, `new Random(1)`); generated identifiers (UUIDs, random keys) are never asserted on literally.
+- Iteration order of unordered collections (Go maps, hash sets) is never asserted on — sort first.
+- No shared mutable state between tests: package-level variables are avoided or reset, environment is set through the test framework (`t.Setenv`), and tests run in parallel (`t.Parallel`, xUnit collections) only when nothing is shared.
+- Network and filesystem are local and ephemeral: port `:0` or in-process test servers, `t.TempDir()`-style directories — never a fixed port, a shared path, or a live external service.
+- Order-independent and repeatable: the suite passes shuffled and repeated (`go test -race -shuffle=on -count=1`); a test that needs a retry to pass is flaky by definition and is fixed, not retried.
+- Concurrency under test exits cleanly: goroutine/thread leaks are detected (goleak in `TestMain`, or a `synctest` bubble, which fails if goroutines outlive it).
+
+Flag violations as `error` (rule area P1), same as Deterministic Time. Language APIs: `golang.md` / `dotnet.md` → *Deterministic environment*.
 
 ### Test function naming
 
